@@ -2,6 +2,11 @@
 name = "rtp-rs"
 version = "0.1.0"
 authors = ["David Holroyd <dave@badgers-in-foil.co.uk>"]
+keywords = [ "RTP", "rfc3550" ]
+description = "Parser for RTP packet structure"
+repository = "https://github.com/dholroyd/rtp-rs"
+license = "MIT/Apache-2.0"
+categories = [ "multimedia::video", "parsing", "network-programming" ]
 
 [lib]
 name = "rtp_rs"
