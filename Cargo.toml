@@ -1,0 +1,8 @@
+[package]
+name = "rtp-rs"
+version = "0.1.0"
+authors = ["David Holroyd <dave@badgers-in-foil.co.uk>"]
+
+[lib]
+name = "rtp_rs"
+path = "src/lib.rs"
