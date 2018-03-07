@@ -8,6 +8,22 @@ fn other(s: &str) -> io::Error {
     io::Error::new(io::ErrorKind::Other, s)
 }
 
+#[derive(PartialEq,Debug)]
+pub struct Seq(u16);
+impl Seq {
+    pub fn next(&self) -> Seq {
+        Seq(self.0.wrapping_add(1))
+    }
+    pub fn precedes(&self, other: Seq) -> bool {
+        self.next() == other
+    }
+}
+impl From<Seq> for u16 {
+    fn from(v: Seq) -> Self {
+        v.0
+    }
+}
+
 impl<'a> RtpReader<'a> {
     pub fn new(b: &'a [u8]) -> io::Result<RtpReader> {
         if b.len() <= 12 {
@@ -41,8 +57,8 @@ impl<'a> RtpReader<'a> {
     pub fn payload_type(&self) -> u8 {
         self.buf[1] & 0b01111111
     }
-    pub fn sequence_number(&self) -> u16 {
-        (self.buf[2] as u16) << 8 | (self.buf[3] as u16)
+    pub fn sequence_number(&self) -> Seq {
+        Seq((self.buf[2] as u16) << 8 | (self.buf[3] as u16))
     }
     pub fn timestamp(&self) -> u32 {
         (self.buf[4] as u32) << 24 | (self.buf[5] as u32) << 16 | (self.buf[6] as u32) << 8 | (self.buf[7] as u32)
@@ -118,9 +134,15 @@ mod tests {
         assert_eq!(0, header.csrc_count());
         assert!(header.mark());
         assert_eq!(96, header.payload_type());
-        assert_eq!(10040, header.sequence_number());
+        assert_eq!(Seq(10040), header.sequence_number());
         assert_eq!(1692665255, header.timestamp());
         assert_eq!(0xa242af01, header.ssrc());
         assert_eq!(379, header.payload().len());
+    }
+
+    #[test]
+    fn seq() {
+        assert!(Seq(1).precedes(Seq(0)));
+        assert!(Seq(0).precedes(Seq(0xffff)));
     }
 }
