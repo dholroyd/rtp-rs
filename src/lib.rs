@@ -81,6 +81,22 @@ impl<'a> RtpReader<'a> {
         &self.buf[self.payload_offset()..]
     }
 }
+impl<'a> fmt::Debug for RtpReader<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        f.debug_struct("RtpReader")
+            .field("version", &self.version())
+            .field("padding", &self.padding())
+            .field("extension", &self.extension())
+            .field("csrc_count", &self.csrc_count())
+            .field("mark", &self.mark())
+            .field("payload_type", &self.payload_type())
+            .field("sequence_number", &self.sequence_number())
+            .field("timestamp", &self.timestamp())
+            .field("ssrc", &self.ssrc())
+            .field("payload_length", &self.payload().len())
+            .finish()
+    }
+}
 
 
 #[cfg(test)]
