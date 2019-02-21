@@ -8,7 +8,7 @@ fn other(s: &str) -> io::Error {
     io::Error::new(io::ErrorKind::Other, s)
 }
 
-#[derive(PartialEq,Debug)]
+#[derive(PartialEq,Debug,Clone,Copy)]
 pub struct Seq(u16);
 impl Seq {
     pub fn next(&self) -> Seq {
