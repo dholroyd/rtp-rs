@@ -11,10 +11,13 @@ pub enum RtpHeaderError {
     /// Only RTP version 2 supported
     UnsupportedVersion(u8),
     /// RTP headers truncated before end of buffer
-    HeadersTruncated{ header_len: usize, buffer_len: usize }
+    HeadersTruncated {
+        header_len: usize,
+        buffer_len: usize,
+    },
 }
 
-#[derive(PartialEq,Debug,Clone,Copy)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub struct Seq(u16);
 impl Seq {
     pub fn next(&self) -> Seq {
@@ -35,12 +38,15 @@ impl<'a> RtpReader<'a> {
         if b.len() <= 12 {
             return Err(RtpHeaderError::BufferTooShort(b.len()));
         }
-        let r = RtpReader{ buf: b };
+        let r = RtpReader { buf: b };
         if r.version() != 2 {
             return Err(RtpHeaderError::UnsupportedVersion(r.version()));
         }
         if r.payload_offset() > b.len() {
-            return Err(RtpHeaderError::HeadersTruncated { header_len: r.payload_offset(), buffer_len: b.len() });
+            return Err(RtpHeaderError::HeadersTruncated {
+                header_len: r.payload_offset(),
+                buffer_len: b.len(),
+            });
         }
         Ok(r)
     }
@@ -67,23 +73,29 @@ impl<'a> RtpReader<'a> {
         Seq((self.buf[2] as u16) << 8 | (self.buf[3] as u16))
     }
     pub fn timestamp(&self) -> u32 {
-        (self.buf[4] as u32) << 24 | (self.buf[5] as u32) << 16 | (self.buf[6] as u32) << 8 | (self.buf[7] as u32)
+        (self.buf[4] as u32) << 24
+            | (self.buf[5] as u32) << 16
+            | (self.buf[6] as u32) << 8
+            | (self.buf[7] as u32)
     }
     pub fn ssrc(&self) -> u32 {
-        (self.buf[8] as u32) << 24 | (self.buf[9] as u32) << 16 | (self.buf[10] as u32) << 8 | (self.buf[11] as u32)
+        (self.buf[8] as u32) << 24
+            | (self.buf[9] as u32) << 16
+            | (self.buf[10] as u32) << 8
+            | (self.buf[11] as u32)
     }
 
     fn payload_offset(&self) -> usize {
         let offset = 12 + (4 * self.csrc_count()) as usize;
         if self.extension() {
-            let len = (self.buf[offset+2] as usize) << 8 | (self.buf[offset+3] as usize);
+            let len = (self.buf[offset + 2] as usize) << 8 | (self.buf[offset + 3] as usize);
             offset + 4 + len
         } else {
             offset
         }
     }
 
-    pub fn payload(&self) -> &'a[u8] {
+    pub fn payload(&self) -> &'a [u8] {
         &self.buf[self.payload_offset()..]
     }
 }
@@ -103,7 +115,6 @@ impl<'a> fmt::Debug for RtpReader<'a> {
             .finish()
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -147,7 +158,7 @@ mod tests {
             0xc1u8, 0xbcu8, 0x81u8, 0x18u8, 0x60u8, 0xc9u8, 0x64u8, 0x0au8, 0xb3u8, 0x6eu8, 0xf3u8,
             0x6bu8, 0xb9u8, 0xd0u8, 0xf6u8, 0xe0u8, 0x9bu8, 0x91u8, 0xc1u8, 0x0fu8, 0x96u8, 0xefu8,
             0xbcu8, 0x5fu8, 0x8eu8, 0x86u8, 0x56u8, 0x5au8, 0xfcu8, 0x7au8, 0x8bu8, 0xddu8, 0x9au8,
-            0x1cu8, 0xf6u8, 0xb4u8, 0x85u8, 0xf4u8, 0xb0u8, 
+            0x1cu8, 0xf6u8, 0xb4u8, 0x85u8, 0xf4u8, 0xb0u8,
         ];
         let header = RtpReader { buf: &data };
         assert_eq!(2, header.version());
