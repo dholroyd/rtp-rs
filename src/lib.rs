@@ -1,11 +1,17 @@
-use std::io;
+use std::fmt;
 
 pub struct RtpReader<'a> {
     buf: &'a [u8],
 }
 
-fn other(s: &str) -> io::Error {
-    io::Error::new(io::ErrorKind::Other, s)
+#[derive(Debug)]
+pub enum RtpHeaderError {
+    /// Buffer too short to be valid RTP packet
+    BufferTooShort(usize),
+    /// Only RTP version 2 supported
+    UnsupportedVersion(u8),
+    /// RTP headers truncated before end of buffer
+    HeadersTruncated{ header_len: usize, buffer_len: usize }
 }
 
 #[derive(PartialEq,Debug,Clone,Copy)]
@@ -25,16 +31,16 @@ impl From<Seq> for u16 {
 }
 
 impl<'a> RtpReader<'a> {
-    pub fn new(b: &'a [u8]) -> io::Result<RtpReader> {
+    pub fn new(b: &'a [u8]) -> Result<RtpReader, RtpHeaderError> {
         if b.len() <= 12 {
-            return Err(other("Buffer too short to be valid RTP packet"));
+            return Err(RtpHeaderError::BufferTooShort(b.len()));
         }
         let r = RtpReader{ buf: b };
         if r.version() != 2 {
-            return Err(other("Only RTP version 2 supported"));
+            return Err(RtpHeaderError::UnsupportedVersion(r.version()));
         }
         if r.payload_offset() > b.len() {
-            return Err(other("RTP headers truncated before end of buffer"));
+            return Err(RtpHeaderError::HeadersTruncated { header_len: r.payload_offset(), buffer_len: b.len() });
         }
         Ok(r)
     }
