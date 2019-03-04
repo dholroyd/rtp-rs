@@ -32,6 +32,66 @@ impl From<Seq> for u16 {
         v.0
     }
 }
+impl From<u16> for Seq {
+    fn from(v: u16) -> Self {
+        Seq(v)
+    }
+}
+
+/// Implements wrapped subtraction such that for instance `Seq(0x0000) - Seq(0xffff)` results in
+/// `1` (rather than `-65535`).
+///
+/// This is for symmetry with addition, where for example `Seq(0xffff) + 1` gives `Seq(0x0000)`
+impl std::ops::Sub for Seq {
+    type Output = i32;
+
+    fn sub(self, rhs: Seq) -> Self::Output {
+        let delta = i32::from(self.0) - i32::from(rhs.0);
+        if delta < std::i16::MIN as i32 {
+            std::u16::MAX as i32 + 1 + delta
+        } else if delta > std::i16::MAX as i32 {
+            delta - std::u16::MAX as i32 - 1
+        } else {
+            delta
+        }
+    }
+}
+impl PartialOrd for Seq {
+    fn partial_cmp(&self, other: &Seq) -> Option<std::cmp::Ordering> {
+        (*self - *other).partial_cmp(&0)
+    }
+}
+
+impl std::ops::Add<u16> for Seq {
+    type Output = Seq;
+
+    fn add(self, rhs: u16) -> Self::Output {
+        Seq(self.0.wrapping_add(rhs))
+    }
+}
+
+pub trait IntoSeqIterator {
+    fn seq_iter(self) -> SeqIter;
+}
+impl IntoSeqIterator for std::ops::Range<Seq> {
+    fn seq_iter(self) -> SeqIter {
+        SeqIter(self.start, self.end)
+    }
+}
+pub struct SeqIter(Seq,Seq);
+impl Iterator for SeqIter {
+    type Item = Seq;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.0 >= self.1 {
+            None
+        } else {
+            let res = self.0;
+            self.0 = self.0.next();
+            Some(res)
+        }
+    }
+}
 
 impl<'a> RtpReader<'a> {
     pub const MIN_HEADER_LEN: usize = 12;
@@ -177,7 +237,19 @@ mod tests {
 
     #[test]
     fn seq() {
-        assert!(Seq(1).precedes(Seq(0)));
-        assert!(Seq(0).precedes(Seq(0xffff)));
+        assert!(Seq(0).precedes(Seq(1)));
+        assert!(Seq(0xffff).precedes(Seq(0)));
+        assert!(Seq(0) < Seq(1));
+        assert!(Seq(0xffff) < Seq(0));
+        assert_eq!(-1, Seq(0) - Seq(1));
+        assert_eq!(1, Seq(1) - Seq(0));
+        assert_eq!(0, Seq(1) - Seq(1));
+        assert_eq!(1, Seq(0) - Seq(0xffff));
+        assert_eq!(-1, Seq(0xffff) - Seq(0));
+        let mut it = (Seq(0xfffe)..Seq(1)).seq_iter();
+        assert_eq!(Seq(0xfffe), it.next().unwrap());
+        assert_eq!(Seq(0xffff), it.next().unwrap());
+        assert_eq!(Seq(0x0000), it.next().unwrap());
+        assert_eq!(None, it.next());
     }
 }
