@@ -34,8 +34,10 @@ impl From<Seq> for u16 {
 }
 
 impl<'a> RtpReader<'a> {
+    pub const MIN_HEADER_LEN: usize = 12;
+
     pub fn new(b: &'a [u8]) -> Result<RtpReader, RtpHeaderError> {
-        if b.len() <= 12 {
+        if b.len() <= Self::MIN_HEADER_LEN {
             return Err(RtpHeaderError::BufferTooShort(b.len()));
         }
         let r = RtpReader { buf: b };
@@ -86,7 +88,7 @@ impl<'a> RtpReader<'a> {
     }
 
     fn payload_offset(&self) -> usize {
-        let offset = 12 + (4 * self.csrc_count()) as usize;
+        let offset = Self::MIN_HEADER_LEN + (4 * self.csrc_count()) as usize;
         if self.extension() {
             let len = (self.buf[offset + 2] as usize) << 8 | (self.buf[offset + 3] as usize);
             offset + 4 + len
