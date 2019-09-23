@@ -17,7 +17,7 @@ Does not support actually reading UDP from the network, or any kind or RTP sessi
 
 - [x] reading
   - [x] all simple header fields
-  - [ ] extension headers (unsupported, but skipped for the purpose of finding the actual RTP payload)
+  - [x] extension header (if present, the `u16` identifier and `&[u8]`value are exposed without further interpretation)
 - [ ] writing
   - unsupported
   
