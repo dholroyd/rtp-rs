@@ -12,3 +12,10 @@ edition = "2018"
 [lib]
 name = "rtp_rs"
 path = "src/lib.rs"
+
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "bench"
+harness = false
