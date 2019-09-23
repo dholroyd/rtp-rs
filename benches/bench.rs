@@ -1,4 +1,3 @@
-
 use criterion::*;
 use rtp_rs::RtpReader;
 
@@ -60,7 +59,6 @@ fn rtp_reader(c: &mut Criterion) {
         })
         .throughput(Throughput::Bytes(data.len() as u64)),
     );
-
 }
 
 criterion_group!(benches, rtp_reader);

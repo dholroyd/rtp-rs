@@ -78,7 +78,7 @@ impl IntoSeqIterator for std::ops::Range<Seq> {
         SeqIter(self.start, self.end)
     }
 }
-pub struct SeqIter(Seq,Seq);
+pub struct SeqIter(Seq, Seq);
 impl Iterator for SeqIter {
     type Item = Seq;
 
@@ -193,7 +193,7 @@ impl<'a> RtpReader<'a> {
             let offset = self.csrc_end();
             let id = (self.buf[offset] as u16) << 8 | (self.buf[offset + 1] as u16);
             let start = offset + 4;
-            Some((id, &self.buf[start..start+self.extension_len()]))
+            Some((id, &self.buf[start..start + self.extension_len()]))
         } else {
             None
         }
@@ -204,7 +204,7 @@ impl<'a> fmt::Debug for RtpReader<'a> {
         f.debug_struct("RtpReader")
             .field("version", &self.version())
             .field("padding", &self.padding())
-            .field("extension", &self.extension().map(|(id, _)| id ))
+            .field("extension", &self.extension().map(|(id, _)| id))
             .field("csrc_count", &self.csrc_count())
             .field("mark", &self.mark())
             .field("payload_type", &self.payload_type())
