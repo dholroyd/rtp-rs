@@ -95,6 +95,7 @@ impl Iterator for SeqIter {
 
 impl<'a> RtpReader<'a> {
     pub const MIN_HEADER_LEN: usize = 12;
+    const EXTENSION_HEADER_LEN: usize = 4;
 
     pub fn new(b: &'a [u8]) -> Result<RtpReader, RtpHeaderError> {
         if b.len() <= Self::MIN_HEADER_LEN {
@@ -103,6 +104,22 @@ impl<'a> RtpReader<'a> {
         let r = RtpReader { buf: b };
         if r.version() != 2 {
             return Err(RtpHeaderError::UnsupportedVersion(r.version()));
+        }
+        if r.extension_flag() {
+            let extension_start = r.csrc_end() + Self::EXTENSION_HEADER_LEN;
+            if extension_start > b.len() {
+                return Err(RtpHeaderError::HeadersTruncated {
+                    header_len: extension_start,
+                    buffer_len: b.len(),
+                });
+            }
+            let extension_end = extension_start + r.extension_len();
+            if extension_end > b.len() {
+                return Err(RtpHeaderError::HeadersTruncated {
+                    header_len: extension_end,
+                    buffer_len: b.len(),
+                });
+            }
         }
         if r.payload_offset() > b.len() {
             return Err(RtpHeaderError::HeadersTruncated {
@@ -119,7 +136,7 @@ impl<'a> RtpReader<'a> {
     pub fn padding(&self) -> bool {
         (self.buf[0] & 0b00100000) != 0
     }
-    pub fn extension(&self) -> bool {
+    fn extension_flag(&self) -> bool {
         (self.buf[0] & 0b00010000) != 0
     }
     pub fn csrc_count(&self) -> u8 {
@@ -148,17 +165,38 @@ impl<'a> RtpReader<'a> {
     }
 
     fn payload_offset(&self) -> usize {
-        let offset = Self::MIN_HEADER_LEN + (4 * self.csrc_count()) as usize;
-        if self.extension() {
-            let len = (self.buf[offset + 2] as usize) << 8 | (self.buf[offset + 3] as usize);
-            offset + 4 + len
+        let offset = self.csrc_end();
+        if self.extension_flag() {
+            offset + Self::EXTENSION_HEADER_LEN + self.extension_len()
         } else {
             offset
         }
     }
 
+    fn csrc_end(&self) -> usize {
+        Self::MIN_HEADER_LEN + (4 * self.csrc_count()) as usize
+    }
+
     pub fn payload(&self) -> &'a [u8] {
         &self.buf[self.payload_offset()..]
+    }
+
+    fn extension_len(&self) -> usize {
+        let offset = self.csrc_end();
+        // The 16 bit extension length header gives a length in 32 bit (4 byte) units; 0 is a
+        // valid length.
+        4 * ((self.buf[offset + 2] as usize) << 8 | (self.buf[offset + 3] as usize))
+    }
+
+    pub fn extension(&self) -> Option<(u16, &'a [u8])> {
+        if self.extension_flag() {
+            let offset = self.csrc_end();
+            let id = (self.buf[offset] as u16) << 8 | (self.buf[offset + 1] as u16);
+            let start = offset + 4;
+            Some((id, &self.buf[start..start+self.extension_len()]))
+        } else {
+            None
+        }
     }
 }
 impl<'a> fmt::Debug for RtpReader<'a> {
@@ -166,7 +204,7 @@ impl<'a> fmt::Debug for RtpReader<'a> {
         f.debug_struct("RtpReader")
             .field("version", &self.version())
             .field("padding", &self.padding())
-            .field("extension", &self.extension())
+            .field("extension", &self.extension().map(|(id, _)| id ))
             .field("csrc_count", &self.csrc_count())
             .field("mark", &self.mark())
             .field("payload_type", &self.payload_type())
@@ -225,7 +263,7 @@ mod tests {
         let header = RtpReader { buf: &data };
         assert_eq!(2, header.version());
         assert!(!header.padding());
-        assert!(!header.extension());
+        assert!(header.extension().is_none());
         assert_eq!(0, header.csrc_count());
         assert!(header.mark());
         assert_eq!(96, header.payload_type());
