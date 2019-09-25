@@ -1,7 +1,7 @@
 # ChangeLog
 
-## Unreleased
-###Changed
+## 0.4.0
+### Changed
  - `RtpReader::extension()` no longer returns the boolean flag indicating if an extension is present, and instead
    produces an `Option` which is `Some` when an extension header is present.  The `Option` contains a `(u16, &[u8])`
    tuple when an extension header is present, where the `u16` value is the extension header id, and the byte-slice is

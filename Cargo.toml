@@ -1,6 +1,6 @@
 [package]
 name = "rtp-rs"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["David Holroyd <dave@badgers-in-foil.co.uk>"]
 keywords = [ "RTP", "rfc3550" ]
 description = "Parser for RTP packet structure"
