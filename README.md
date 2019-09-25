@@ -3,6 +3,8 @@
 [![crates.io version](https://img.shields.io/crates/v/rtp-rs.svg)](https://crates.io/crates/rtp-rs)
 [![Documentation](https://docs.rs/rtp-rs/badge.svg)](https://docs.rs/rtp-rs)
 
+[ChangeLog](https://github.com/dholroyd/rtp-rs/blob/master/CHANGELOG.md)
+
 Rust reader for Realtime Transport Protocol packet structure.
 
 This crate provides efficient read access to the fields and payload of an RTP packet.
