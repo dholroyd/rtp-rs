@@ -266,7 +266,7 @@ mod tests {
             0xbcu8, 0x5fu8, 0x8eu8, 0x86u8, 0x56u8, 0x5au8, 0xfcu8, 0x7au8, 0x8bu8, 0xddu8, 0x9au8,
             0x1cu8, 0xf6u8, 0xb4u8, 0x85u8, 0xf4u8, 0xb0u8,
         ];
-        let header = RtpReader { buf: &data };
+        let header = RtpReader::new(&data).unwrap();
         assert_eq!(2, header.version());
         assert!(!header.padding());
         assert!(header.extension().is_none());
