@@ -1,6 +1,6 @@
 # ChangeLog
 
-## Unreleased
+## 0.5.0 - 2019-09-29
 ### Fixed
  - Trailing padding-bytes, indicated by the `padding` flag in the RTP header, are now excluded from the data returned by
    the `payload()` method.
