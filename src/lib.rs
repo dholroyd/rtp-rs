@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![deny(rust_2018_idioms, future_incompatible)]
 
 use std::fmt;
 
@@ -99,7 +100,7 @@ impl<'a> RtpReader<'a> {
     pub const MIN_HEADER_LEN: usize = 12;
     const EXTENSION_HEADER_LEN: usize = 4;
 
-    pub fn new(b: &'a [u8]) -> Result<RtpReader, RtpHeaderError> {
+    pub fn new(b: &'a [u8]) -> Result<RtpReader<'_>, RtpHeaderError> {
         if b.len() <= Self::MIN_HEADER_LEN {
             return Err(RtpHeaderError::BufferTooShort(b.len()));
         }
@@ -208,7 +209,7 @@ impl<'a> RtpReader<'a> {
     }
 }
 impl<'a> fmt::Debug for RtpReader<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         f.debug_struct("RtpReader")
             .field("version", &self.version())
             .field("padding", &self.padding())
