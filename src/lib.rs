@@ -40,6 +40,10 @@ pub enum RtpHeaderError {
         /// `header_len`
         buffer_len: usize,
     },
+    /// The padding header at the end of the packet, if present, specifies the number of padding
+    /// bytes, including itself, and therefore cannot be less than `1`, or greater than the
+    /// available space.
+    PaddingLengthInvalid(u8),
 }
 
 /// 16 bit RTP sequence number value, as obtained from the `sequence_number()` method of RtpReader.
@@ -201,6 +205,19 @@ impl<'a> RtpReader<'a> {
                 buffer_len: b.len(),
             });
         }
+        if r.padding() {
+            if r.payload_offset() > b.len() - 1 {
+                return Err(RtpHeaderError::HeadersTruncated {
+                    header_len: r.payload_offset(),
+                    buffer_len: b.len() - 1,
+                });
+            }
+            let pad_len = r.padding_len()?;
+
+            if r.payload_offset() + pad_len as usize > b.len() {
+                return Err(RtpHeaderError::PaddingLengthInvalid(pad_len));
+            }
+        }
         Ok(r)
     }
 
@@ -293,12 +310,17 @@ impl<'a> RtpReader<'a> {
         Self::MIN_HEADER_LEN + (4 * self.csrc_count()) as usize
     }
 
-    /// Returns the puyload data of this RTP packet, excluding the packet's headers.
-    ///
-    /// ⚠ Warning: does not currently exclude any packet padding, for RTP streams that use the
-    /// `padding` flag.
+    /// Returns the payload data of this RTP packet, excluding the packet's headers and any
+    /// optional trailing padding.
     pub fn payload(&self) -> &'a [u8] {
-        &self.buf[self.payload_offset()..]
+        let pad = if self.padding() {
+            // in Self::new(), we already checked this was Ok, and will not attempt an invalid
+            // slice below,
+            self.padding_len().unwrap() as usize
+        } else {
+            0
+        };
+        &self.buf[self.payload_offset()..self.buf.len() - pad]
     }
 
     fn extension_len(&self) -> usize {
@@ -306,6 +328,14 @@ impl<'a> RtpReader<'a> {
         // The 16 bit extension length header gives a length in 32 bit (4 byte) units; 0 is a
         // valid length.
         4 * ((self.buf[offset + 2] as usize) << 8 | (self.buf[offset + 3] as usize))
+    }
+
+    // must only be used if padding() returns true
+    fn padding_len(&self) -> Result<u8, RtpHeaderError> {
+        match self.buf[self.buf.len() - 1] {
+            0 => Err(RtpHeaderError::PaddingLengthInvalid(0)),
+            l => Ok(l),
+        }
     }
 
     /// Returns details of the optional RTP header extension field.  If there is an extension,
@@ -395,6 +425,17 @@ mod tests {
         assert_eq!(0xa242_af01, header.ssrc());
         assert_eq!(379, header.payload().len());
         format!("{:?}", header);
+    }
+
+    #[test]
+    fn padding_too_large() {
+        // 'padding' header-flag is on, and padding length (255) in final byte is larger than the
+        // buffer length. (Test data created by fuzzing.)
+        let data = [
+            0xa2, 0xa2, 0xa2, 0xa2, 0xa2, 0x90, 0x0, 0x0, 0x1, 0x0, 0xff, 0xa2, 0xa2, 0xa2, 0xa2,
+            0x90, 0x0, 0x0, 0x0, 0x0, 0xff,
+        ];
+        assert!(RtpReader::new(&data).is_err());
     }
 
     #[test]

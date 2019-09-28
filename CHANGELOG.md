@@ -1,6 +1,13 @@
 # ChangeLog
 
 ## Unreleased
+### Fixed
+ - Trailing padding-bytes, indicated by the `padding` flag in the RTP header, are now excluded from the data returned by
+   the `payload()` method.
+ - Since we now pay attention to padding data, `RtpReader::new()` will fail if the indicated padding length is
+   nonsensical (less than one byte, or greater than the available space).
+### Changed
+ - `RtpHeaderError` gains a new `PaddingLengthInvalid` variant
 ### Added
  - `csrc()` method to expose any CSRC header values that might be present (rarely used RTP feature).
  - API docs are now provided for all public items
