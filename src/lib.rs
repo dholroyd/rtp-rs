@@ -131,22 +131,22 @@ impl<'a> RtpReader<'a> {
     }
 
     pub fn version(&self) -> u8 {
-        (self.buf[0] & 0b11000000) >> 6
+        (self.buf[0] & 0b1100_0000) >> 6
     }
     pub fn padding(&self) -> bool {
-        (self.buf[0] & 0b00100000) != 0
+        (self.buf[0] & 0b0010_0000) != 0
     }
     fn extension_flag(&self) -> bool {
-        (self.buf[0] & 0b00010000) != 0
+        (self.buf[0] & 0b0001_0000) != 0
     }
     pub fn csrc_count(&self) -> u8 {
-        self.buf[0] & 0b00001111
+        self.buf[0] & 0b0000_1111
     }
     pub fn mark(&self) -> bool {
-        (self.buf[1] & 0b10000000) != 0
+        (self.buf[1] & 0b1000_0000) != 0
     }
     pub fn payload_type(&self) -> u8 {
-        self.buf[1] & 0b01111111
+        self.buf[1] & 0b0111_1111
     }
     pub fn sequence_number(&self) -> Seq {
         Seq((self.buf[2] as u16) << 8 | (self.buf[3] as u16))
@@ -268,8 +268,8 @@ mod tests {
         assert!(header.mark());
         assert_eq!(96, header.payload_type());
         assert_eq!(Seq(10040), header.sequence_number());
-        assert_eq!(1692665255, header.timestamp());
-        assert_eq!(0xa242af01, header.ssrc());
+        assert_eq!(1_692_665_255, header.timestamp());
+        assert_eq!(0xa242_af01, header.ssrc());
         assert_eq!(379, header.payload().len());
     }
 

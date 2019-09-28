@@ -52,8 +52,8 @@ fn rtp_reader(c: &mut Criterion) {
                 assert!(header.mark());
                 assert_eq!(96, header.payload_type());
                 assert_eq!(10040, u16::from(header.sequence_number()));
-                assert_eq!(1692665255, header.timestamp());
-                assert_eq!(0xa242af01, header.ssrc());
+                assert_eq!(1_692_665_255, header.timestamp());
+                assert_eq!(0xa242_af01, header.ssrc());
                 assert_eq!(379, header.payload().len());
             });
         })
