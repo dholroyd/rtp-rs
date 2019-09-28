@@ -73,12 +73,12 @@ impl Seq {
     /// Produce the sequence value which follows this one.
     ///
     /// Sequence numbers wrap back to `0x0000` after reaching the value `0xffff`
-    pub fn next(&self) -> Seq {
+    pub fn next(self) -> Seq {
         Seq(self.0.wrapping_add(1))
     }
 
     /// Returns `true` if this sequence number value is immediately before the given one
-    pub fn precedes(&self, other: Seq) -> bool {
+    pub fn precedes(self, other: Seq) -> bool {
         self.next() == other
     }
 }

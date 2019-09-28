@@ -8,6 +8,8 @@
    nonsensical (less than one byte, or greater than the available space).
 ### Changed
  - `RtpHeaderError` gains a new `PaddingLengthInvalid` variant
+ - The `Seq` methods `next()` and `precedes()` now both take `self` by value, which _clippy_ points out should be more
+   efficient,
 ### Added
  - `csrc()` method to expose any CSRC header values that might be present (rarely used RTP feature).
  - API docs are now provided for all public items
