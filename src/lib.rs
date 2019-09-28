@@ -1,12 +1,30 @@
+//! Parser for packets formatted per [RFC 3550](https://tools.ietf.org/html/rfc3550), _A Transport
+//! Protocol for Real-Time Applications_.
+//!
+//! ```
+//! use rtp_rs::*;
+//! // let data = ...acquire UDP packet from the network etc...
+//! # let data = &[
+//! # 0x80u8, 0xe0u8, 0x27u8, 0x38u8, 0x64u8, 0xe4u8,
+//! # 0x05u8, 0xa7u8, 0xa2u8, 0x42u8, 0xafu8, 0x01u8
+//! # ];
+//! if let Ok(rtp) = RtpReader::new(data) {
+//!     println!("Sequence number {:?}", rtp.sequence_number());
+//!     println!("Payload length {:?}", rtp.payload().len());
+//! }
+//! ```
+
 #![forbid(unsafe_code)]
-#![deny(rust_2018_idioms, future_incompatible)]
+#![deny(rust_2018_idioms, future_incompatible, missing_docs)]
 
 use std::fmt;
 
+/// Wrapper around a byte-slice of RTP data, providing accessor methods for the RTP header fields.
 pub struct RtpReader<'a> {
     buf: &'a [u8],
 }
 
+/// Reasons for `RtpHeader::new()` to fail
 #[derive(Debug)]
 pub enum RtpHeaderError {
     /// Buffer too short to be valid RTP packet
@@ -15,17 +33,47 @@ pub enum RtpHeaderError {
     UnsupportedVersion(u8),
     /// RTP headers truncated before end of buffer
     HeadersTruncated {
+        /// The amount of data which was expected to be present (which may vary depending on flags
+        /// in the RTP header)
         header_len: usize,
+        /// The actual amount of data that was available, which was found to be smaller than
+        /// `header_len`
         buffer_len: usize,
     },
 }
 
+/// 16 bit RTP sequence number value, as obtained from the `sequence_number()` method of RtpReader.
+///
+/// ```
+/// use rtp_rs::*;
+/// let seq = Seq::from(123);
+/// ```
+///
+/// This type's behavior attempts to honour the expected wrap-around of sequence number values
+/// from `0xffff` back to `0x0000`.
+///
+/// You can perform logic over sequences of RTP packets using this type and other helpers from this
+/// crate,
+/// ```
+/// # use rtp_rs::*;
+/// let start = Seq::from(0xfffe);
+/// let end = Seq::from(0x0002);
+/// // produces the Seq values 0xfffe, 0xffff, 0x0000, 0x0001:
+/// for seq in (start..end).seq_iter() {
+///     // ...inspect some RTP packet you've stored against this sequence number...
+/// }
+/// ```
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub struct Seq(u16);
 impl Seq {
+    /// Produce the sequence value which follows this one.
+    ///
+    /// Sequence numbers wrap back to `0x0000` after reaching the value `0xffff`
     pub fn next(&self) -> Seq {
         Seq(self.0.wrapping_add(1))
     }
+
+    /// Returns `true` if this sequence number value is immediately before the given one
     pub fn precedes(&self, other: Seq) -> bool {
         self.next() == other
     }
@@ -73,7 +121,9 @@ impl std::ops::Add<u16> for Seq {
     }
 }
 
+/// Trait for types that can produce a `SeqIter`, with an implementation provided for `Range<Seq>`.
 pub trait IntoSeqIterator {
+    /// Produce an `Iterator` over sequence number values
     fn seq_iter(self) -> SeqIter;
 }
 impl IntoSeqIterator for std::ops::Range<Seq> {
@@ -81,6 +131,19 @@ impl IntoSeqIterator for std::ops::Range<Seq> {
         SeqIter(self.start, self.end)
     }
 }
+
+/// An `Iterator` which can produce values from the given start value to the given end value, inclusive.
+///
+/// Rather than using this directly, it is convenient to use a range like so,
+/// ```
+/// use rtp_rs::*;
+/// use rtp_rs::IntoSeqIterator;
+/// let here = 12.into();
+/// let there = 22.into();
+/// for seq in (here..there).seq_iter() {
+///     println!("{:?}", seq);
+/// }
+/// ```
 pub struct SeqIter(Seq, Seq);
 impl Iterator for SeqIter {
     type Item = Seq;
@@ -97,9 +160,17 @@ impl Iterator for SeqIter {
 }
 
 impl<'a> RtpReader<'a> {
+    /// An RTP packet header is no fewer than 12 bytes long
     pub const MIN_HEADER_LEN: usize = 12;
     const EXTENSION_HEADER_LEN: usize = 4;
 
+    /// Tries to construct a new `RtpHeader` instance, or an `RtpHeaderError` if the RTP data is
+    /// malformed.
+    ///
+    /// In particular, if there is too little data in the given buffer, such that some later
+    /// attempt to access an RTP header field would need to access bytes that are not available,
+    /// then this method will fail up front, rather than allowing attempts to access any header
+    /// field to fail later on.
     pub fn new(b: &'a [u8]) -> Result<RtpReader<'_>, RtpHeaderError> {
         if b.len() <= Self::MIN_HEADER_LEN {
             return Err(RtpHeaderError::BufferTooShort(b.len()));
@@ -133,39 +204,75 @@ impl<'a> RtpReader<'a> {
         Ok(r)
     }
 
+    /// Version field value (currently only version 2 is supported, so other values will not be
+    /// seen from this release of `rtp-rs`.
     pub fn version(&self) -> u8 {
         (self.buf[0] & 0b1100_0000) >> 6
     }
+    /// Flag indicating if padding is present at the end of the payload data.
+    ///
+    /// The `payload()` method should return the packet payload minus any padding, but that's not
+    /// yet implemented.
     pub fn padding(&self) -> bool {
         (self.buf[0] & 0b0010_0000) != 0
     }
     fn extension_flag(&self) -> bool {
         (self.buf[0] & 0b0001_0000) != 0
     }
+    /// A count of the number of CSRC fields present in the RTP headers - may be `0`.
+    ///
+    /// See [csrc()](#method.csrc).
     pub fn csrc_count(&self) -> u8 {
         self.buf[0] & 0b0000_1111
     }
+    /// A 'marker', which may have some definition in the specific RTP profile in use
     pub fn mark(&self) -> bool {
         (self.buf[1] & 0b1000_0000) != 0
     }
+    /// Indicates the type of content carried in this RTP packet.
+    ///
+    /// A few types-values are defined in the standard, but in many applications of RTP the value
+    /// of this field needs to be agreed between sender and receiver by some mechanism outside of
+    /// RTP itself.
     pub fn payload_type(&self) -> u8 {
         self.buf[1] & 0b0111_1111
     }
+    /// The sequence number of this particular packet.
+    ///
+    /// Sequence numbers are 16 bits, and will wrap back to `0` after reaching the maximum 16-bit
+    /// value of `65535`.
+    ///
+    /// Receivers can identify packet losses or reordering by inspecting the value of this field
+    /// across a sequence of received packets.  The [`Seq`](struct.Seq.html) wrapper type helps
+    /// calling code reason about sequence number problems in the face of any wraparound that might
+    /// have legitimately happened.
     pub fn sequence_number(&self) -> Seq {
         Seq((self.buf[2] as u16) << 8 | (self.buf[3] as u16))
     }
+    /// The timestamp of this packet, given in a timebase that relates to the particular
+    /// `payload_type` in use.
+    ///
+    /// It is perfectly possible for successive packets in a sequence to have the same value, or
+    /// to have values that differ by arbitrarily large amounts.
+    ///
+    /// Timestamps are 32 bits, and will wrap back to `0` after reaching the maximum 32 bit value
+    /// of `4294967295`.
     pub fn timestamp(&self) -> u32 {
         (self.buf[4] as u32) << 24
             | (self.buf[5] as u32) << 16
             | (self.buf[6] as u32) << 8
             | (self.buf[7] as u32)
     }
+    /// The _synchronisation source_ for this packet.  Many applications of RTP do not use this
+    /// field.
     pub fn ssrc(&self) -> u32 {
         (self.buf[8] as u32) << 24
             | (self.buf[9] as u32) << 16
             | (self.buf[10] as u32) << 8
             | (self.buf[11] as u32)
     }
+    /// A potentially empty list of _contributing sources_ for this packet.  Many applications of
+    /// RTP do not use this field.
     pub fn csrc(&self) -> impl Iterator<Item = u32> + '_ {
         self.buf[Self::MIN_HEADER_LEN..]
             .chunks(4)
@@ -186,6 +293,10 @@ impl<'a> RtpReader<'a> {
         Self::MIN_HEADER_LEN + (4 * self.csrc_count()) as usize
     }
 
+    /// Returns the puyload data of this RTP packet, excluding the packet's headers.
+    ///
+    /// ⚠ Warning: does not currently exclude any packet padding, for RTP streams that use the
+    /// `padding` flag.
     pub fn payload(&self) -> &'a [u8] {
         &self.buf[self.payload_offset()..]
     }
@@ -197,6 +308,9 @@ impl<'a> RtpReader<'a> {
         4 * ((self.buf[offset + 2] as usize) << 8 | (self.buf[offset + 3] as usize))
     }
 
+    /// Returns details of the optional RTP header extension field.  If there is an extension,
+    /// the first component of the resulting tuple is the extension id, and the second is a
+    /// byte-slice for the extension data value, to be interpreted by the application.
     pub fn extension(&self) -> Option<(u16, &'a [u8])> {
         if self.extension_flag() {
             let offset = self.csrc_end();
