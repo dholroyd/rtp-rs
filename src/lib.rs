@@ -277,6 +277,7 @@ mod tests {
         assert_eq!(1_692_665_255, header.timestamp());
         assert_eq!(0xa242_af01, header.ssrc());
         assert_eq!(379, header.payload().len());
+        format!("{:?}", header);
     }
 
     #[test]
