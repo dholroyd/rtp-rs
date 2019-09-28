@@ -3,6 +3,7 @@
 ## Unreleased
 ### Added
  - `csrc()` method to expose any CSRC header values that might be present (rarely used RTP feature).
+ - API docs are now provided for all public items
 
 ## 0.4.0 - 2019-09-25
 ### Changed
