@@ -1,11 +1,16 @@
 # ChangeLog
 
+## Unreleased
+### Added
+ - `csrc()` method to expose any CSRC header values that might be present (rarely used RTP feature).
+
 ## 0.4.0 - 2019-09-25
 ### Changed
  - `RtpReader::extension()` no longer returns the boolean flag indicating if an extension is present, and instead
    produces an `Option` which is `Some` when an extension header is present.  The `Option` contains a `(u16, &[u8])`
    tuple when an extension header is present, where the `u16` value is the extension header id, and the byte-slice is
    the extension header payload.
+### Fixed
  - Should no longer panic if the RTP packet length is not sufficient to contain all 4 bytes of an extension header
    (where the extension header is flagged to be present) -- thanks to [@ts252](https://github.com/ts252) for spotting.
  - Extension header lengths where incorrectly calculated in earlier releases, which would have resulted in invalid RTP

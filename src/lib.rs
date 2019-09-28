@@ -163,6 +163,12 @@ impl<'a> RtpReader<'a> {
             | (self.buf[10] as u32) << 8
             | (self.buf[11] as u32)
     }
+    pub fn csrc(&self) -> impl Iterator<Item = u32> + '_ {
+        self.buf[Self::MIN_HEADER_LEN..]
+            .chunks(4)
+            .take(self.csrc_count() as usize)
+            .map(|b| (b[0] as u32) << 24 | (b[1] as u32) << 16 | (b[2] as u32) << 8 | (b[3] as u32))
+    }
 
     fn payload_offset(&self) -> usize {
         let offset = self.csrc_end();
