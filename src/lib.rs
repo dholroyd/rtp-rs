@@ -67,7 +67,23 @@ pub enum RtpHeaderError {
 ///     // ...inspect some RTP packet you've stored against this sequence number...
 /// }
 /// ```
-#[derive(PartialEq, Debug, Clone, Copy)]
+///
+/// ## Unsoundness
+/// **Note** this type has implementations of `Ord` and `PartialOrd`, but those implementations
+/// violate the requirement for transitivity which both traits document.
+///
+/// ```should_panic
+/// # use rtp_rs::*;
+/// let a = Seq::from(0);
+/// let b = a + 0x7fff;
+/// let c = b + 0x7fff;
+/// assert!(a < b);
+/// assert!(b < c);
+/// assert!(a < c);  // Assertion fails, in violation of Ord/PartialOrd requirements
+/// ```
+/// A future release will potentially deprecate `Ord` / `PartialOrd` implementations for `Seq`, and
+/// hopefully provide a mechanism for sequence number processing which is sound.
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub struct Seq(u16);
 impl Seq {
     /// Produce the sequence value which follows this one.
@@ -114,6 +130,11 @@ impl std::ops::Sub for Seq {
 impl PartialOrd for Seq {
     fn partial_cmp(&self, other: &Seq) -> Option<std::cmp::Ordering> {
         (*self - *other).partial_cmp(&0)
+    }
+}
+impl Ord for Seq {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        (*self - *other).cmp(&0)
     }
 }
 
