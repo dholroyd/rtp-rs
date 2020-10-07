@@ -96,6 +96,12 @@ impl<'a> RtpPacketBuilder<'a> {
         self
     }
 
+    /// Set the source for this packet
+    pub fn ssrc(mut self, ssrc: u32) -> Self {
+        self.ssrc = ssrc;
+        self
+    }
+
     /// Set the timestamp
     pub fn timestamp(mut self, timestamp: u32) -> Self {
         self.timestamp = timestamp;

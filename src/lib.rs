@@ -22,6 +22,8 @@
 //! let payload = vec![0u8, 2, 5, 4, 6];
 //! let result = RtpPacketBuilder::new()
 //!     .payload_type(111)
+//!     .ssrc(1337)
+//!     .sequence(Seq::from(1234))
 //!     .padded()
 //!     .marked()
 //!     .payload(&payload)
