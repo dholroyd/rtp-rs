@@ -1,6 +1,7 @@
-//! Parser for packets formatted per [RFC 3550](https://tools.ietf.org/html/rfc3550), _A Transport
+//! Parser and builder for packets formatted per [RFC 3550](https://tools.ietf.org/html/rfc3550), _A Transport
 //! Protocol for Real-Time Applications_.
 //!
+//! Parse a packet
 //! ```
 //! use rtp_rs::*;
 //! // let data = ...acquire UDP packet from the network etc...
@@ -11,6 +12,22 @@
 //! if let Ok(rtp) = RtpReader::new(data) {
 //!     println!("Sequence number {:?}", rtp.sequence_number());
 //!     println!("Payload length {:?}", rtp.payload().len());
+//! }
+//! ```
+//!
+//! Build a packet
+//! ```
+//! use rtp_rs::*;
+//!
+//! let payload = vec![0u8, 2, 5, 4, 6];
+//! let result = RtpPacketBuilder::new()
+//!     .payload_type(111)
+//!     .padded()
+//!     .marked()
+//!     .payload(&payload)
+//!     .build();
+//! if let Ok(packet) = result {
+//!     println!("Packet: {:?}", packet);
 //! }
 //! ```
 
@@ -157,3 +174,6 @@ impl Iterator for SeqIter {
 
 mod reader;
 pub use reader::*;
+
+mod builder;
+pub use builder::*;

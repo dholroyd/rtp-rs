@@ -8,7 +8,7 @@ pub struct RtpReader<'a> {
 
 /// Reasons for `RtpHeader::new()` to fail
 #[derive(Debug)]
-pub enum RtpHeaderError {
+pub enum RtpReaderError {
     /// Buffer too short to be valid RTP packet
     BufferTooShort(usize),
     /// Only RTP version 2 supported
@@ -33,46 +33,46 @@ impl<'a> RtpReader<'a> {
     pub const MIN_HEADER_LEN: usize = 12;
     const EXTENSION_HEADER_LEN: usize = 4;
 
-    /// Tries to construct a new `RtpHeader` instance, or an `RtpHeaderError` if the RTP data is
+    /// Tries to construct a new `RtpHeader` instance, or an `RtpReaderError` if the RTP data is
     /// malformed.
     ///
     /// In particular, if there is too little data in the given buffer, such that some later
     /// attempt to access an RTP header field would need to access bytes that are not available,
     /// then this method will fail up front, rather than allowing attempts to access any header
     /// field to fail later on.
-    pub fn new(b: &'a [u8]) -> Result<RtpReader<'_>, RtpHeaderError> {
+    pub fn new(b: &'a [u8]) -> Result<RtpReader<'_>, RtpReaderError> {
         if b.len() <= Self::MIN_HEADER_LEN {
-            return Err(RtpHeaderError::BufferTooShort(b.len()));
+            return Err(RtpReaderError::BufferTooShort(b.len()));
         }
         let r = RtpReader { buf: b };
         if r.version() != 2 {
-            return Err(RtpHeaderError::UnsupportedVersion(r.version()));
+            return Err(RtpReaderError::UnsupportedVersion(r.version()));
         }
         if r.extension_flag() {
             let extension_start = r.csrc_end() + Self::EXTENSION_HEADER_LEN;
             if extension_start > b.len() {
-                return Err(RtpHeaderError::HeadersTruncated {
+                return Err(RtpReaderError::HeadersTruncated {
                     header_len: extension_start,
                     buffer_len: b.len(),
                 });
             }
             let extension_end = extension_start + r.extension_len();
             if extension_end > b.len() {
-                return Err(RtpHeaderError::HeadersTruncated {
+                return Err(RtpReaderError::HeadersTruncated {
                     header_len: extension_end,
                     buffer_len: b.len(),
                 });
             }
         }
         if r.payload_offset() > b.len() {
-            return Err(RtpHeaderError::HeadersTruncated {
+            return Err(RtpReaderError::HeadersTruncated {
                 header_len: r.payload_offset(),
                 buffer_len: b.len(),
             });
         }
         if r.padding() {
             if r.payload_offset() > b.len() - 1 {
-                return Err(RtpHeaderError::HeadersTruncated {
+                return Err(RtpReaderError::HeadersTruncated {
                     header_len: r.payload_offset(),
                     buffer_len: b.len() - 1,
                 });
@@ -80,7 +80,7 @@ impl<'a> RtpReader<'a> {
             let pad_len = r.padding_len()?;
 
             if r.payload_offset() + pad_len as usize > b.len() {
-                return Err(RtpHeaderError::PaddingLengthInvalid(pad_len));
+                return Err(RtpReaderError::PaddingLengthInvalid(pad_len));
             }
         }
         Ok(r)
@@ -196,9 +196,9 @@ impl<'a> RtpReader<'a> {
     }
 
     // must only be used if padding() returns true
-    fn padding_len(&self) -> Result<u8, RtpHeaderError> {
+    fn padding_len(&self) -> Result<u8, RtpReaderError> {
         match self.buf[self.buf.len() - 1] {
-            0 => Err(RtpHeaderError::PaddingLengthInvalid(0)),
+            0 => Err(RtpReaderError::PaddingLengthInvalid(0)),
             l => Ok(l),
         }
     }
