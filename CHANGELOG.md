@@ -3,7 +3,7 @@
 ## Unreleased
 ### Added
  - The `Seq` type now implements `Ord` (in addition to the `PartialOrd` implementation that was already available).
-
+ - Added a builder for RTP packet building
 ## 0.5.0 - 2019-09-29
 ### Fixed
  - Trailing padding-bytes, indicated by the `padding` flag in the RTP header, are now excluded from the data returned by

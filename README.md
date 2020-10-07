@@ -5,7 +5,7 @@
 
 [ChangeLog](https://github.com/dholroyd/rtp-rs/blob/master/CHANGELOG.md)
 
-Rust reader for Realtime Transport Protocol packet structure.
+Rust reader and builder for Realtime Transport Protocol packet structure.
 
 This crate provides efficient read access to the fields and payload of an RTP packet.
 The provided type is just a wrapper around a `&[u8]` borrowed byte slice; It is zero-copy
@@ -20,6 +20,8 @@ Does not support actually reading UDP from the network, or any kind or RTP sessi
 - [x] reading
   - [x] all simple header fields
   - [x] extension header (if present, the `u16` identifier and `&[u8]`value are exposed without further interpretation)
-- [ ] writing
-  - unsupported
+- [x] building
+  - [x] all simple header fields
+  - [x] extension header
+  - [x] padding to 4 bytes
   
