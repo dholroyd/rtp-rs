@@ -71,9 +71,9 @@ impl<'a> RtpPacketBuilder<'a> {
         self
     }
 
-    /// Enable the marker bit in the RTP header
-    pub fn marked(mut self) -> Self {
-        self.marked = true;
+    /// Set the marker bit in the RTP header
+    pub fn marked(mut self, flag: bool) -> Self {
+        self.marked = flag;
         self
     }
 
@@ -140,9 +140,6 @@ impl<'a> RtpPacketBuilder<'a> {
     pub fn build_into_unchecked(&mut self, target: &mut [u8]) -> usize {
         let first_byte = &mut target[0];
         *first_byte = 2 << 6; /* The RTP packet version */
-        if self.padded {
-            *first_byte |= 1 << 5;  /* set the padded flag */
-        }
         if self.extension.is_some() {
             *first_byte |= 1 << 4; /* set the extension flag */
         }
@@ -181,7 +178,7 @@ impl<'a> RtpPacketBuilder<'a> {
             target[write_index + 0] = (id >>    8) as u8;
             target[write_index + 1] = (id &  0xFF) as u8;
 
-            let len = payload.len();
+            let len = payload.len() / 4;
             target[write_index + 2] = (len >>    8) as u8;
             target[write_index + 3] = (len &  0xFF) as u8;
 
@@ -199,6 +196,8 @@ impl<'a> RtpPacketBuilder<'a> {
         }
 
         if self.padded && (write_index & 0x3) != 0 {
+            target[0] |= 1 << 5;  /* set the padded flag */
+
             let padded_bytes = (!(write_index & 0x3) + 1) & 0x3;
             write_index += padded_bytes;
             target[write_index - 1] = padded_bytes as u8;
