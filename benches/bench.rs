@@ -1,5 +1,5 @@
 use criterion::*;
-use rtp_rs::RtpReader;
+use rtp_rs::{RtpReader, RtpPacketBuilder};
 
 fn rtp_reader(c: &mut Criterion) {
     let data = [
@@ -61,5 +61,22 @@ fn rtp_reader(c: &mut Criterion) {
     );
 }
 
-criterion_group!(benches, rtp_reader);
+fn rtp_builder(c: &mut Criterion) {
+    let payload = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    c.bench(
+        "builder",
+        Benchmark::new("builder", move |b| {
+            b.iter(|| {
+                let _result = RtpPacketBuilder::new()
+                    .payload_type(12)
+                    .payload(&payload)
+                    .marked()
+                    .add_csrc(12)
+                    .build().unwrap();
+            });
+        })
+    );
+}
+
+criterion_group!(benches, rtp_reader, rtp_builder);
 criterion_main!(benches);
