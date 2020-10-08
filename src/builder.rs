@@ -274,7 +274,7 @@ mod test {
         let packet = RtpPacketBuilder::new()
             .payload_type(1)
             .payload(&payload)
-            .padded()
+            .padded(true)
             .build().unwrap();
 
         assert_eq!(packet.len() & 0x03, 0);
