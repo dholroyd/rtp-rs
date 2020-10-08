@@ -17,6 +17,7 @@ pub enum RtpPacketBuildError {
 }
 
 /// A new packet build which collects the data which should be written as RTP packet
+#[derive(Clone)]
 pub struct RtpPacketBuilder<'a> {
     padded: bool,
     marked: bool,
@@ -294,7 +295,7 @@ mod test {
     #[test]
     fn test_would_run() {
         let extension = vec![1u8, 2, 3, 4];
-        let mut builder = RtpPacketBuilder::new()
+        let builder = RtpPacketBuilder::new()
             .payload_type(12)
             .extension(1, &extension);
 
