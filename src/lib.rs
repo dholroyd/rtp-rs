@@ -24,8 +24,9 @@
 //!     .payload_type(111)
 //!     .ssrc(1337)
 //!     .sequence(Seq::from(1234))
+//!     .timestamp(666657)
 //!     .padded()
-//!     .marked()
+//!     .marked(true)
 //!     .payload(&payload)
 //!     .build();
 //! if let Ok(packet) = result {
