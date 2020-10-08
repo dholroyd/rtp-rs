@@ -70,7 +70,7 @@ fn rtp_builder(c: &mut Criterion) {
                 let _result = RtpPacketBuilder::new()
                     .payload_type(12)
                     .payload(&payload)
-                    .marked()
+                    .marked(true)
                     .add_csrc(12)
                     .build().unwrap();
             });
