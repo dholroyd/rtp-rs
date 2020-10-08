@@ -66,8 +66,8 @@ impl<'a> RtpPacketBuilder<'a> {
     }
 
     /// Pad the packet to a four byte boundary
-    pub fn padded(mut self) -> Self {
-        self.padded = true;
+    pub fn padded(mut self, flag: bool) -> Self {
+        self.padded = flag;
         self
     }
 

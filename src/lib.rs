@@ -25,7 +25,7 @@
 //!     .ssrc(1337)
 //!     .sequence(Seq::from(1234))
 //!     .timestamp(666657)
-//!     .padded()
+//!     .padded(true)
 //!     .marked(true)
 //!     .payload(&payload)
 //!     .build();
