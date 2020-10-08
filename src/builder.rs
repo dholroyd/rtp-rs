@@ -150,7 +150,7 @@ impl<'a> RtpPacketBuilder<'a> {
     }
 
     /// Build the packet into the target buffer but ignore all validity checks.
-    pub fn build_into_unchecked(&mut self, target: &mut [u8]) -> usize {
+    pub fn build_into_unchecked(&self, target: &mut [u8]) -> usize {
         let first_byte = &mut target[0];
         *first_byte = 2 << 6; /* The RTP packet version */
         if self.extension.is_some() {
@@ -221,7 +221,7 @@ impl<'a> RtpPacketBuilder<'a> {
 
     /// Build the RTP packet on the target buffer.
     /// The length of the final packet will be returned on success.
-    pub fn build_into(&mut self, target: &mut [u8]) -> Result<usize, RtpPacketBuildError> {
+    pub fn build_into(&self, target: &mut [u8]) -> Result<usize, RtpPacketBuildError> {
         if target.len() < self.target_length() {
             return Err(RtpPacketBuildError::BufferTooSmall);
         }
@@ -233,7 +233,7 @@ impl<'a> RtpPacketBuilder<'a> {
 
     /// Build the RTP packet.
     /// On success it returns a buffer containing the target packet.
-    pub fn build(&mut self) -> Result<Vec<u8>, RtpPacketBuildError> {
+    pub fn build(&self) -> Result<Vec<u8>, RtpPacketBuildError> {
         self.validate_content()?;
 
         let mut buffer = Vec::<u8>::new();
