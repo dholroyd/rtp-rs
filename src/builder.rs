@@ -78,7 +78,7 @@ impl<'a> RtpPacketBuilder<'a> {
     }
 
     /// Add a contributing source (csrc).
-    /// If more than 15 contributing sources the rest will be discarded.
+    /// If added more than 15 contributing sources the rest will be discarded.
     pub fn add_csrc(mut self, csrc: u32) -> Self {
         if self.csrc_count == 15 {
             /* The limit of contributing sources is 15. Any more should be discarded. */
@@ -88,6 +88,19 @@ impl<'a> RtpPacketBuilder<'a> {
             self.csrc_count = self.csrc_count + 1;
             self
         }
+    }
+
+    /// Set the contributing sources (csrc).
+    /// If added more than 15 contributing sources the rest will be discarded.
+    pub fn set_csrc(mut self, csrcs: &[u32]) -> Self {
+        if csrcs.len() > 15 {
+            self.csrc_count = 15;
+        } else {
+            self.csrc_count = csrcs.len() as u8;
+        }
+
+        self.csrcs[0..self.csrc_count as usize].copy_from_slice(csrcs);
+        self
     }
 
     /// Set the sequence number
