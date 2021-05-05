@@ -4,21 +4,11 @@ extern crate rtp_rs;
 
 fuzz_target!(|data: &[u8]| {
     if let Ok(header) = rtp_rs::RtpReader::new(data) {
-        let _ = header.version();
-        let _ = header.padding();
-        if let Some(ext) = header.extension() {
-            let _ = ext.0;
-            let _ = ext.1;
-        }
-        let _ = header.csrc_count();
-        let _ = header.mark();
-        let _ = header.payload_type();
-        let _ = header.sequence_number();
-        let _ = header.timestamp();
-        let _ = header.ssrc();
-        let _ = header.payload().len();
-        let _ = header.extension();
-        for _ in header.csrc() {
-        }
+        let b = header.create_builder();
+        let len = b.target_length();
+        let mut out = vec![0u8; len];
+        b.build_into(&mut out[..]).expect("build_into() failed");
+        // check that the buffer we get back from the builder matches the buffer we started from,
+        assert_eq!(&data[..len], &out[..]);
     }
 });
