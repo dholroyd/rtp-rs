@@ -16,10 +16,85 @@ pub enum RtpPacketBuildError {
     ExtensionMissingPadding,
 }
 
+// until we have https://github.com/rust-lang/rust/issues/51999 I think
+macro_rules! const_assert {
+    ($x:expr $(,)?) => {
+        #[allow(unknown_lints, clippy::eq_op)]
+        {
+            const ASSERT: [(); 1] = [()];
+            let _ = ASSERT[!($x) as usize];
+        }
+    };
+}
+
+/// Controls if and how an RTP packet should have padding appended after the payload
+///
+/// For example to have the builder add padding if required so that packet lengths are always a
+/// multiple of 4 bytes:
+///
+/// ```
+/// # use rtp_rs::{RtpPacketBuilder, Pad};
+/// let mut builder = RtpPacketBuilder::new()
+///     .padded(Pad::round_to(4));
+/// // configure the rest of the packet fields and then build the packet
+/// ```
+pub struct Pad(PadInner);
+
+impl Pad {
+    /// No padding should be added, and the `padding` flag in the header should not be set
+    pub const fn none() -> Self {
+        Pad(PadInner::None)
+    }
+    /// Exactly the given number of bytes of padding should be added to the packet length, whatever
+    /// the length of the packet was before padding, and set the `padding` flag in the packet
+    /// header.
+    ///
+    /// Panics if the given value is less than 1.
+    pub const fn add_exactly(pad: u8) -> Self {
+        const_assert!(pad >= 1);
+        Pad(PadInner::AddExactly(pad))
+    }
+    /// Add padding bytes so that the resulting packet length will be a multiple of the given
+    /// value, and set the `padding` flag in the packet header
+    ///
+    /// Panics if the given value is less than 2.
+    pub const fn round_to(pad: u8) -> Self {
+        const_assert!(pad >= 2);
+        Pad(PadInner::RoundTo(pad))
+    }
+}
+
+// we hide the enum so that calling code can't set tuple-variant values directly, bypassing our
+// checks for invalid values.
+#[derive(Clone)]
+enum PadInner {
+    None,
+    AddExactly(u8),
+    RoundTo(u8),
+}
+
+impl PadInner {
+    pub fn is_padded(&self) -> bool {
+        match self {
+            PadInner::None => false,
+            PadInner::AddExactly(_) => true,
+            PadInner::RoundTo(_) => true,
+        }
+    }
+
+    pub fn adjust_len(&self, initial_len: usize) -> usize {
+        match self {
+            PadInner::None => 0,
+            PadInner::AddExactly(n) => *n as usize,
+            PadInner::RoundTo(n) => *n as usize - (initial_len % *n as usize),
+        }
+    }
+}
+
 /// A new packet build which collects the data which should be written as RTP packet
 #[derive(Clone)]
 pub struct RtpPacketBuilder<'a> {
-    padded: bool,
+    padded: PadInner,
     marked: bool,
     payload_type: u8,
 
@@ -38,7 +113,7 @@ impl<'a> RtpPacketBuilder<'a> {
     /// Create a new RTP packet builder
     pub fn new() -> Self {
         RtpPacketBuilder {
-            padded: false,
+            padded: PadInner::None,
             marked: false,
             /*
              * Setting it to an invalid value enforces the user to set the payload type.
@@ -66,9 +141,14 @@ impl<'a> RtpPacketBuilder<'a> {
         self
     }
 
-    /// Pad the packet to a four byte boundary
-    pub fn padded(mut self, flag: bool) -> Self {
-        self.padded = flag;
+    /// Control if and how bytes are appended to the packet if the headers and payload together
+    /// do not have an appropriate length (for instance if the length of the resulting RTP data
+    /// must be a multiple of 4 bytes).
+    ///
+    /// The default is `Pad::none()` - no padding bytes will be added and the padding flag will not
+    /// be set in the RTP header.
+    pub fn padded(mut self, pad: Pad) -> Self {
+        self.padded = pad.0;
         self
     }
 
@@ -144,9 +224,7 @@ impl<'a> RtpPacketBuilder<'a> {
         length += self.csrc_count as usize * 4;
         length += if let Some((_, ext)) = self.extension { ext.len() + 4 } else { 0 };
         length += if let Some(payload) = self.payload { payload.len() } else { 0 };
-        if self.padded && (length & 0x3) != 0 {
-            length += (!(length & 0x3) + 1) & 0x3;
-        }
+        length += self.padded.adjust_len(length);
         length
     }
 
@@ -209,10 +287,10 @@ impl<'a> RtpPacketBuilder<'a> {
             write_index += payload.len();
         }
 
-        if self.padded && (write_index & 0x3) != 0 {
+        if self.padded.is_padded() {
             target[0] |= 1 << 5;  /* set the padded flag */
 
-            let padded_bytes = (!(write_index & 0x3) + 1) & 0x3;
+            let padded_bytes = self.padded.adjust_len(write_index);
             write_index += padded_bytes;
             target[write_index - 1] = padded_bytes as u8;
         }
@@ -267,7 +345,7 @@ impl<'a> RtpPacketBuilder<'a> {
 
 #[cfg(test)]
 mod test {
-    use crate::RtpPacketBuilder;
+    use crate::{RtpPacketBuilder, Pad};
 
     #[test]
     fn test_padded() {
@@ -275,7 +353,7 @@ mod test {
         let packet = RtpPacketBuilder::new()
             .payload_type(1)
             .payload(&payload)
-            .padded(true)
+            .padded(Pad::round_to(4))
             .build().unwrap();
 
         assert_eq!(packet.len() & 0x03, 0);

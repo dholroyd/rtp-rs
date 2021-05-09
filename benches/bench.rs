@@ -46,7 +46,7 @@ fn rtp_reader(c: &mut Criterion) {
             b.iter(|| {
                 let header = RtpReader::new(&data).unwrap();
                 assert_eq!(2, header.version());
-                assert!(!header.padding());
+                assert!(header.padding().is_none());
                 assert!(header.extension().is_none());
                 assert_eq!(0, header.csrc_count());
                 assert!(header.mark());
