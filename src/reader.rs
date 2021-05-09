@@ -41,7 +41,7 @@ impl<'a> RtpReader<'a> {
     /// then this method will fail up front, rather than allowing attempts to access any header
     /// field to fail later on.
     pub fn new(b: &'a [u8]) -> Result<RtpReader<'_>, RtpReaderError> {
-        if b.len() <= Self::MIN_HEADER_LEN {
+        if b.len() < Self::MIN_HEADER_LEN {
             return Err(RtpReaderError::BufferTooShort(b.len()));
         }
         let r = RtpReader { buf: b };
