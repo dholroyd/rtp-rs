@@ -23,5 +23,5 @@ Does not support actually reading UDP from the network, or any kind or RTP sessi
 - [x] building
   - [x] all simple header fields
   - [x] extension header
-  - [x] padding to 4 bytes
+  - [x] padding to specified number of bytes
   
