@@ -71,7 +71,10 @@ impl<'a> RtpReader<'a> {
             });
         }
         if r.padding_flag() {
-            if r.payload_offset() > b.len() - 1 {
+            let post_header_bytes =  b.len() - r.payload_offset();
+            // with 'padding' flag set, there must be at least a single byte after the headers to
+            // hold the padding length
+            if post_header_bytes == 0 {
                 return Err(RtpReaderError::HeadersTruncated {
                     header_len: r.payload_offset(),
                     buffer_len: b.len() - 1,
