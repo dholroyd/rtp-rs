@@ -1,5 +1,5 @@
 use std::fmt;
-use crate::{Seq, RtpPacketBuilder, Pad};
+use crate::{Seq, RtpPacketBuilder};
 
 /// Wrapper around a byte-slice of RTP data, providing accessor methods for the RTP header fields.
 pub struct RtpReader<'a> {
