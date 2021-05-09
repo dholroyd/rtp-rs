@@ -1,5 +1,5 @@
 use std::fmt;
-use crate::{Seq, RtpPacketBuilder};
+use crate::{Seq, RtpPacketBuilder, Pad};
 
 /// Wrapper around a byte-slice of RTP data, providing accessor methods for the RTP header fields.
 pub struct RtpReader<'a> {
@@ -70,7 +70,7 @@ impl<'a> RtpReader<'a> {
                 buffer_len: b.len(),
             });
         }
-        if r.padding() {
+        if r.padding_flag() {
             if r.payload_offset() > b.len() - 1 {
                 return Err(RtpReaderError::HeadersTruncated {
                     header_len: r.payload_offset(),
@@ -91,13 +91,21 @@ impl<'a> RtpReader<'a> {
     pub fn version(&self) -> u8 {
         (self.buf[0] & 0b1100_0000) >> 6
     }
+
     /// Flag indicating if padding is present at the end of the payload data.
-    ///
-    /// The `payload()` method should return the packet payload minus any padding, but that's not
-    /// yet implemented.
-    pub fn padding(&self) -> bool {
+    fn padding_flag(&self) -> bool {
         (self.buf[0] & 0b0010_0000) != 0
     }
+    /// Returns the size of the padding at the end of this packet, or `None` if the padding flag is
+    /// not set in the packet header
+    pub fn padding(&self) -> Option<u8> {
+        if self.padding_flag() {
+            Some(self.padding_len().unwrap())
+        } else {
+            None
+        }
+    }
+
     fn extension_flag(&self) -> bool {
         (self.buf[0] & 0b0001_0000) != 0
     }
@@ -179,7 +187,7 @@ impl<'a> RtpReader<'a> {
     /// Returns the payload data of this RTP packet, excluding the packet's headers and any
     /// optional trailing padding.
     pub fn payload(&self) -> &'a [u8] {
-        let pad = if self.padding() {
+        let pad = if self.padding_flag() {
             // in Self::new(), we already checked this was Ok, and will not attempt an invalid
             // slice below,
             self.padding_len().unwrap() as usize
@@ -218,11 +226,24 @@ impl<'a> RtpReader<'a> {
         }
     }
 
-    /// Create a `RtpPacketBuilder` from this packet.
+    /// Create a `RtpPacketBuilder` from this packet.  **Note** that padding from the original
+    /// packet will not be used by default, and must be defined on the resulting `RtpPacketBuilder`
+    /// if required.
+    ///
+    /// The padding is not copied from the original since, while we do know how many padding bytes
+    /// were present, we don't know if the intent was to round to 2 bytes, 4 bytes, etc.  Blindly
+    /// copying the padding could result in an incorrect result _if_ the payload is subsequently
+    /// changed for one with a different length.
+    ///
+    /// If you know your output packets don't need padding, there is nothing more to do, since
+    /// that is the default for the resulting `RtpPacketBulder`.
+    ///
+    /// If you know you output packets need padding to 4 bytes, then you _must_ explicitly specify
+    /// this using `builder.padded(Pad::round_to(4))` even if the source packet was already padded
+    /// to a 4 byte boundary.
     pub fn create_builder(&self) -> RtpPacketBuilder<'a> {
         let mut builder = RtpPacketBuilder::new()
             .payload_type(self.payload_type())
-            .padded(self.padding())
             .marked(self.mark())
             .sequence(self.sequence_number())
             .ssrc(self.ssrc())
@@ -315,7 +336,7 @@ mod tests {
     fn version() {
         let reader = RtpReader::new(&TEST_RTP_PACKET).unwrap();
         assert_eq!(2, reader.version());
-        assert!(!reader.padding());
+        assert!(reader.padding().is_none());
         assert!(reader.extension().is_none());
         assert_eq!(0, reader.csrc_count());
         assert!(reader.mark());
@@ -331,7 +352,7 @@ mod tests {
     fn padding() {
         let reader = RtpReader::new(&TEST_RTP_PACKET_WITH_EXTENSION).unwrap();
         assert_eq!(2, reader.version());
-        assert!(!reader.padding());
+        assert!(reader.padding().is_none());
         assert!(reader.extension().is_some());
         assert_eq!(0, reader.csrc_count());
         assert_eq!(111, reader.payload_type());
