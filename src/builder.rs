@@ -369,7 +369,8 @@ mod test {
             .padded(Pad::round_to(4))
             .build().unwrap();
 
-        assert_eq!(packet.len() & 0x03, 0);
+        // assert the length is not increased beyond the 12 bytes of header + the payload
+        assert_eq!(packet.len(), 12 + payload.len());
         assert!(crate::reader::RtpReader::new(&packet).unwrap().padding().is_none());
     }
 
