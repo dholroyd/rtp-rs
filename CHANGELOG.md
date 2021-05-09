@@ -3,7 +3,13 @@
 ## Unreleased
 ### Added
  - The `Seq` type now implements `Ord` (in addition to the `PartialOrd` implementation that was already available).
- - Added a builder for RTP packet building
+ - [@WolverinDEV](https://github.com/WolverinDEV) added an `RtpPacketBuilder` 🎊
+
+### Changed
+ - `RtpHeaderError` was renamed to `RtpReaderError` (the type relates to read-failures specifically, and we now
+   have support for writing too)
+ - `RtpHeader::padding()` now returns `Option<u8>`, rather than `bool`, exposing how many padding bytes are present as
+   well as the fact that padding is in use.
  - We no longer reject RTP packets that contain headers but no payload
 
 ## 0.5.0 - 2019-09-29
