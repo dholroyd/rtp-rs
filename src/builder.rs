@@ -74,19 +74,18 @@ enum PadInner {
 }
 
 impl PadInner {
-    pub fn is_padded(&self) -> bool {
+    pub fn adjust_len(&self, initial_len: usize) -> Option<usize> {
         match self {
-            PadInner::None => false,
-            PadInner::AddExactly(_) => true,
-            PadInner::RoundTo(_) => true,
-        }
-    }
-
-    pub fn adjust_len(&self, initial_len: usize) -> usize {
-        match self {
-            PadInner::None => 0,
-            PadInner::AddExactly(n) => *n as usize,
-            PadInner::RoundTo(n) => *n as usize - (initial_len % *n as usize),
+            PadInner::None => None,
+            PadInner::AddExactly(n) => Some(*n as usize),
+            PadInner::RoundTo(n) => {
+                let remainder = initial_len % *n as usize;
+                if remainder == 0 {
+                    None
+                } else {
+                    Some(*n as usize - remainder)
+                }
+            },
         }
     }
 }
@@ -224,7 +223,9 @@ impl<'a> RtpPacketBuilder<'a> {
         length += self.csrc_count as usize * 4;
         length += if let Some((_, ext)) = self.extension { ext.len() + 4 } else { 0 };
         length += if let Some(payload) = self.payload { payload.len() } else { 0 };
-        length += self.padded.adjust_len(length);
+        if let Some(adj) = self.padded.adjust_len(length) {
+            length += adj;
+        }
         length
     }
 
@@ -287,10 +288,9 @@ impl<'a> RtpPacketBuilder<'a> {
             write_index += payload.len();
         }
 
-        if self.padded.is_padded() {
+        if let Some(padded_bytes) = self.padded.adjust_len(write_index) {
             target[0] |= 1 << 5;  /* set the padded flag */
 
-            let padded_bytes = self.padded.adjust_len(write_index);
             write_index += padded_bytes;
             target[write_index - 1] = padded_bytes as u8;
         }
@@ -357,6 +357,20 @@ mod test {
             .build().unwrap();
 
         assert_eq!(packet.len() & 0x03, 0);
+        assert!(crate::reader::RtpReader::new(&packet).unwrap().padding().is_some());
+    }
+
+    #[test]
+    fn test_padding_not_needed() {
+        let payload = vec![1u8; 4];
+        let packet = RtpPacketBuilder::new()
+            .payload_type(1)
+            .payload(&payload)
+            .padded(Pad::round_to(4))
+            .build().unwrap();
+
+        assert_eq!(packet.len() & 0x03, 0);
+        assert!(crate::reader::RtpReader::new(&packet).unwrap().padding().is_none());
     }
 
     #[test]
