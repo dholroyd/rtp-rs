@@ -45,15 +45,6 @@ impl Pad {
     pub const fn none() -> Self {
         Pad(PadInner::None)
     }
-    /// Exactly the given number of bytes of padding should be added to the packet length, whatever
-    /// the length of the packet was before padding, and set the `padding` flag in the packet
-    /// header.
-    ///
-    /// Panics if the given value is less than 1.
-    pub const fn add_exactly(pad: u8) -> Self {
-        const_assert!(pad >= 1);
-        Pad(PadInner::AddExactly(pad))
-    }
     /// Add padding bytes so that the resulting packet length will be a multiple of the given
     /// value, and set the `padding` flag in the packet header
     ///
@@ -69,7 +60,6 @@ impl Pad {
 #[derive(Clone)]
 enum PadInner {
     None,
-    AddExactly(u8),
     RoundTo(u8),
 }
 
@@ -77,7 +67,6 @@ impl PadInner {
     pub fn adjust_len(&self, initial_len: usize) -> Option<usize> {
         match self {
             PadInner::None => None,
-            PadInner::AddExactly(n) => Some(*n as usize),
             PadInner::RoundTo(n) => {
                 let remainder = initial_len % *n as usize;
                 if remainder == 0 {
