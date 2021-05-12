@@ -3,11 +3,12 @@ name = "rtp-rs"
 version = "0.5.0"
 authors = ["David Holroyd <dave@badgers-in-foil.co.uk>", "Markus Hadenfeldt <git@did.science>"]
 keywords = [ "RTP", "rfc3550" ]
-description = "Parser for RTP packet structure"
+description = "Parser and generator for RTP packet structure"
 repository = "https://github.com/dholroyd/rtp-rs"
 license = "MIT/Apache-2.0"
 categories = [ "multimedia::video", "parser-implementations", "network-programming" ]
 edition = "2018"
+readme = "README.md"
 
 [lib]
 name = "rtp_rs"
