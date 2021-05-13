@@ -1,6 +1,6 @@
 [package]
 name = "rtp-rs"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["David Holroyd <dave@badgers-in-foil.co.uk>", "Markus Hadenfeldt <git@did.science>"]
 keywords = [ "RTP", "rfc3550" ]
 description = "Parser and generator for RTP packet structure"
