@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## Unreleased
+
 ## 0.6.0 - 2021-05-13
 ### Added
  - The `Seq` type now implements `Ord` (in addition to the `PartialOrd` implementation that was already available).
