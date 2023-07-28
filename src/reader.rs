@@ -281,6 +281,28 @@ impl<'a> fmt::Debug for RtpReader<'a> {
     }
 }
 
+impl std::error::Error for RtpReaderError {}
+
+impl std::fmt::Display for RtpReaderError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                RtpReaderError::BufferTooShort(b) => format!("buffer too short: {b}"),
+                RtpReaderError::UnsupportedVersion(v) => format!("unsupported version: {v}"),
+                RtpReaderError::HeadersTruncated {
+                    header_len,
+                    buffer_len,
+                } => format!(
+                    "headers truncated: header length: {header_len}; buffer length: {buffer_len}"
+                ),
+                RtpReaderError::PaddingLengthInvalid(p) => format!("padding length invalid: {p}"),
+            }
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
