@@ -120,7 +120,7 @@ impl std::ops::Sub for Seq {
 }
 impl PartialOrd for Seq {
     fn partial_cmp(&self, other: &Seq) -> Option<std::cmp::Ordering> {
-        (*self - *other).partial_cmp(&0)
+        Some(self.cmp(other))
     }
 }
 impl Ord for Seq {

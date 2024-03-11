@@ -397,14 +397,14 @@ mod tests {
         let reader = RtpReader::new(&TEST_RTP_PACKET).unwrap();
         let buffer = reader.create_builder().build().unwrap();
 
-        assert_eq!(&buffer.as_slice()[..], &TEST_RTP_PACKET[..]);
+        assert_eq!(buffer.as_slice(), &TEST_RTP_PACKET[..]);
     }
 
     #[test]
     fn builder_juggle_extension() {
         let reader = RtpReader::new(&TEST_RTP_PACKET_WITH_EXTENSION).unwrap();
         let buffer = reader.create_builder().build().unwrap();
-        assert_eq!(&buffer.as_slice()[..], &TEST_RTP_PACKET_WITH_EXTENSION[..]);
+        assert_eq!(buffer.as_slice(), &TEST_RTP_PACKET_WITH_EXTENSION[..]);
     }
 
     #[test]
@@ -418,7 +418,7 @@ mod tests {
             .unwrap();
 
         let expected = &TEST_RTP_PACKET_WITH_EXTENSION[0..(3 + 4) * 4];
-        assert_eq!(&buffer.as_slice()[..], expected);
+        assert_eq!(buffer.as_slice(), expected);
     }
 
     #[test]

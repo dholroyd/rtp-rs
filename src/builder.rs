@@ -97,6 +97,12 @@ pub struct RtpPacketBuilder<'a> {
     csrc_count: u8,
 }
 
+impl<'a> Default for RtpPacketBuilder<'a> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<'a> RtpPacketBuilder<'a> {
     /// Create a new RTP packet builder
     pub fn new() -> Self {
@@ -154,7 +160,7 @@ impl<'a> RtpPacketBuilder<'a> {
             self
         } else {
             self.csrcs[self.csrc_count as usize] = csrc;
-            self.csrc_count = self.csrc_count + 1;
+            self.csrc_count += 1;
             self
         }
     }
@@ -256,23 +262,23 @@ impl<'a> RtpPacketBuilder<'a> {
         let mut write_index = 12usize;
         for index in 0..self.csrc_count as usize {
             let csrc = self.csrcs[index];
-            target[write_index + 0] = (csrc >> 24) as u8;
+            target[write_index] = (csrc >> 24) as u8;
             target[write_index + 1] = (csrc >> 16) as u8;
             target[write_index + 2] = (csrc >> 8) as u8;
             target[write_index + 3] = (csrc) as u8;
 
-            write_index = write_index + 4;
+            write_index += 4;
         }
 
         if let Some((id, payload)) = self.extension {
-            target[write_index + 0] = (id >> 8) as u8;
+            target[write_index] = (id >> 8) as u8;
             target[write_index + 1] = (id & 0xFF) as u8;
 
             let len = payload.len() / 4;
             target[write_index + 2] = (len >> 8) as u8;
             target[write_index + 3] = (len & 0xFF) as u8;
 
-            write_index = write_index + 4;
+            write_index += 4;
 
             /* the target buffer has been ensured to hold that many bytes */
             target[write_index..(write_index + payload.len())].copy_from_slice(payload);
@@ -307,12 +313,11 @@ impl<'a> RtpPacketBuilder<'a> {
     }
 
     /// Build the RTP packet.
-    /// On success it returns a buffer containing the target packet.
+    /// On success, it returns a buffer containing the target packet.
     pub fn build(&self) -> Result<Vec<u8>, RtpPacketBuildError> {
         self.validate_content()?;
 
-        let mut buffer = Vec::<u8>::new();
-        buffer.resize(self.target_length(), 0);
+        let mut buffer = vec![0; self.target_length()];
 
         let length = self.build_into_unchecked(buffer.as_mut_slice());
         assert_eq!(length, buffer.len());
