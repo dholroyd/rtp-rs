@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-## Unreleased
+### Added
+ - `RtpPacketBuildError` and `RtpReaderError` now implement `std::error::Error`
 
 ## 0.6.0 - 2021-05-13
 ### Added
