@@ -74,7 +74,7 @@ impl PadInner {
                 } else {
                     Some(*n as usize - remainder)
                 }
-            },
+            }
         }
     }
 }
@@ -94,7 +94,7 @@ pub struct RtpPacketBuilder<'a> {
 
     ssrc: u32,
     csrcs: [u32; 15],
-    csrc_count: u8
+    csrc_count: u8,
 }
 
 impl<'a> RtpPacketBuilder<'a> {
@@ -117,7 +117,7 @@ impl<'a> RtpPacketBuilder<'a> {
 
             ssrc: 0,
             csrcs: [0u32; 15],
-            csrc_count: 0
+            csrc_count: 0,
         }
     }
 
@@ -210,8 +210,16 @@ impl<'a> RtpPacketBuilder<'a> {
         /* 12 is the length of the basic header */
         let mut length = 12usize;
         length += self.csrc_count as usize * 4;
-        length += if let Some((_, ext)) = self.extension { ext.len() + 4 } else { 0 };
-        length += if let Some(payload) = self.payload { payload.len() } else { 0 };
+        length += if let Some((_, ext)) = self.extension {
+            ext.len() + 4
+        } else {
+            0
+        };
+        length += if let Some(payload) = self.payload {
+            payload.len()
+        } else {
+            0
+        };
         if let Some(adj) = self.padded.adjust_len(length) {
             length += adj;
         }
@@ -232,37 +240,37 @@ impl<'a> RtpPacketBuilder<'a> {
             target[1] |= 0x80;
         }
 
-        target[ 2] = (self.sequence.0 >>    8) as u8;
-        target[ 3] = (self.sequence.0 &  0xFF) as u8;
+        target[2] = (self.sequence.0 >> 8) as u8;
+        target[3] = (self.sequence.0 & 0xFF) as u8;
 
-        target[ 4] = (self.timestamp >> 24) as u8;
-        target[ 5] = (self.timestamp >> 16) as u8;
-        target[ 6] = (self.timestamp >>  8) as u8;
-        target[ 7] = (self.timestamp      ) as u8;
+        target[4] = (self.timestamp >> 24) as u8;
+        target[5] = (self.timestamp >> 16) as u8;
+        target[6] = (self.timestamp >> 8) as u8;
+        target[7] = (self.timestamp) as u8;
 
-        target[ 8] = (self.ssrc >> 24) as u8;
-        target[ 9] = (self.ssrc >> 16) as u8;
-        target[10] = (self.ssrc >>  8) as u8;
-        target[11] = (self.ssrc      ) as u8;
+        target[8] = (self.ssrc >> 24) as u8;
+        target[9] = (self.ssrc >> 16) as u8;
+        target[10] = (self.ssrc >> 8) as u8;
+        target[11] = (self.ssrc) as u8;
 
         let mut write_index = 12usize;
         for index in 0..self.csrc_count as usize {
             let csrc = self.csrcs[index];
             target[write_index + 0] = (csrc >> 24) as u8;
             target[write_index + 1] = (csrc >> 16) as u8;
-            target[write_index + 2] = (csrc >>  8) as u8;
-            target[write_index + 3] = (csrc      ) as u8;
+            target[write_index + 2] = (csrc >> 8) as u8;
+            target[write_index + 3] = (csrc) as u8;
 
             write_index = write_index + 4;
         }
 
         if let Some((id, payload)) = self.extension {
-            target[write_index + 0] = (id >>    8) as u8;
-            target[write_index + 1] = (id &  0xFF) as u8;
+            target[write_index + 0] = (id >> 8) as u8;
+            target[write_index + 1] = (id & 0xFF) as u8;
 
             let len = payload.len() / 4;
-            target[write_index + 2] = (len >>    8) as u8;
-            target[write_index + 3] = (len &  0xFF) as u8;
+            target[write_index + 2] = (len >> 8) as u8;
+            target[write_index + 3] = (len & 0xFF) as u8;
 
             write_index = write_index + 4;
 
@@ -278,7 +286,7 @@ impl<'a> RtpPacketBuilder<'a> {
         }
 
         if let Some(padded_bytes) = self.padded.adjust_len(write_index) {
-            target[0] |= 1 << 5;  /* set the padded flag */
+            target[0] |= 1 << 5; /* set the padded flag */
 
             write_index += padded_bytes;
             target[write_index - 1] = padded_bytes as u8;
@@ -297,7 +305,6 @@ impl<'a> RtpPacketBuilder<'a> {
         self.validate_content()?;
         Ok(self.build_into_unchecked(target))
     }
-
 
     /// Build the RTP packet.
     /// On success it returns a buffer containing the target packet.
@@ -351,7 +358,7 @@ impl std::fmt::Display for RtpPacketBuildError {
 
 #[cfg(test)]
 mod test {
-    use crate::{RtpPacketBuilder, Pad};
+    use crate::{Pad, RtpPacketBuilder};
 
     #[test]
     fn test_padded() {
@@ -360,10 +367,14 @@ mod test {
             .payload_type(1)
             .payload(&payload)
             .padded(Pad::round_to(4))
-            .build().unwrap();
+            .build()
+            .unwrap();
 
         assert_eq!(packet.len() & 0x03, 0);
-        assert!(crate::reader::RtpReader::new(&packet).unwrap().padding().is_some());
+        assert!(crate::reader::RtpReader::new(&packet)
+            .unwrap()
+            .padding()
+            .is_some());
     }
 
     #[test]
@@ -373,11 +384,15 @@ mod test {
             .payload_type(1)
             .payload(&payload)
             .padded(Pad::round_to(4))
-            .build().unwrap();
+            .build()
+            .unwrap();
 
         // assert the length is not increased beyond the 12 bytes of header + the payload
         assert_eq!(packet.len(), 12 + payload.len());
-        assert!(crate::reader::RtpReader::new(&packet).unwrap().padding().is_none());
+        assert!(crate::reader::RtpReader::new(&packet)
+            .unwrap()
+            .padding()
+            .is_none());
     }
 
     #[test]
@@ -386,7 +401,8 @@ mod test {
         let packet = RtpPacketBuilder::new()
             .payload_type(1)
             .payload(&payload)
-            .build().unwrap();
+            .build()
+            .unwrap();
 
         assert_eq!(packet.len() & 0x03, 1);
     }

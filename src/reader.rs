@@ -1,5 +1,5 @@
+use crate::{RtpPacketBuilder, Seq};
 use std::fmt;
-use crate::{Seq, RtpPacketBuilder};
 
 /// Wrapper around a byte-slice of RTP data, providing accessor methods for the RTP header fields.
 pub struct RtpReader<'a> {
@@ -71,7 +71,7 @@ impl<'a> RtpReader<'a> {
             });
         }
         if r.padding_flag() {
-            let post_header_bytes =  b.len() - r.payload_offset();
+            let post_header_bytes = b.len() - r.payload_offset();
             // with 'padding' flag set, there must be at least a single byte after the headers to
             // hold the padding length
             if post_header_bytes == 0 {
@@ -308,7 +308,6 @@ mod tests {
     use super::*;
     use crate::IntoSeqIterator;
 
-
     const TEST_RTP_PACKET: [u8; 391] = [
         0x80u8, 0xe0u8, 0x27u8, 0x38u8, 0x64u8, 0xe4u8, 0x05u8, 0xa7u8, 0xa2u8, 0x42u8, 0xafu8,
         0x01u8, 0x3cu8, 0x41u8, 0xa4u8, 0xa3u8, 0x5du8, 0x13u8, 0xf9u8, 0xcau8, 0x2cu8, 0x7eu8,
@@ -349,12 +348,11 @@ mod tests {
     ];
 
     const TEST_RTP_PACKET_WITH_EXTENSION: [u8; 63] = [
-        144u8,  111u8,  79u8,  252u8,  224u8,  94u8,  104u8,  203u8,  30u8,  112u8,  208u8,
-        191u8,  190u8,  222u8,  0u8,  3u8,  34u8,  175u8,  185u8,  88u8,  49u8,  0u8,  171u8,
-        64u8,  48u8,  16u8,  219u8,  0u8,  104u8,  9u8,  136u8,  90u8,  174u8,  145u8,  68u8,
-        165u8,  227u8,  178u8,  187u8,  68u8,  166u8,  66u8,  235u8,  40u8,  171u8,  135u8,
-        30u8,  174u8,  130u8,  239u8,  205u8,  14u8,  211u8,  232u8,  65u8,  67u8,  153u8,
-        120u8,  63u8,  17u8,  101u8,  55u8,  17u8
+        144u8, 111u8, 79u8, 252u8, 224u8, 94u8, 104u8, 203u8, 30u8, 112u8, 208u8, 191u8, 190u8,
+        222u8, 0u8, 3u8, 34u8, 175u8, 185u8, 88u8, 49u8, 0u8, 171u8, 64u8, 48u8, 16u8, 219u8, 0u8,
+        104u8, 9u8, 136u8, 90u8, 174u8, 145u8, 68u8, 165u8, 227u8, 178u8, 187u8, 68u8, 166u8, 66u8,
+        235u8, 40u8, 171u8, 135u8, 30u8, 174u8, 130u8, 239u8, 205u8, 14u8, 211u8, 232u8, 65u8,
+        67u8, 153u8, 120u8, 63u8, 17u8, 101u8, 55u8, 17u8,
     ];
 
     #[test]
@@ -413,8 +411,11 @@ mod tests {
     fn builder_juggle_clear_payload() {
         let new_payload = vec![];
         let reader = RtpReader::new(&TEST_RTP_PACKET_WITH_EXTENSION).unwrap();
-        let buffer = reader.create_builder()
-            .payload(&new_payload).build().unwrap();
+        let buffer = reader
+            .create_builder()
+            .payload(&new_payload)
+            .build()
+            .unwrap();
 
         let expected = &TEST_RTP_PACKET_WITH_EXTENSION[0..(3 + 4) * 4];
         assert_eq!(&buffer.as_slice()[..], expected);

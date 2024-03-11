@@ -1,5 +1,5 @@
 use criterion::*;
-use rtp_rs::{RtpReader, RtpPacketBuilder};
+use rtp_rs::{RtpPacketBuilder, RtpReader};
 
 fn rtp_reader(c: &mut Criterion) {
     let data = [
@@ -68,7 +68,8 @@ fn rtp_builder(c: &mut Criterion) {
                 .payload(&payload)
                 .marked(true)
                 .add_csrc(12)
-                .build().unwrap();
+                .build()
+                .unwrap();
         });
     });
 }
