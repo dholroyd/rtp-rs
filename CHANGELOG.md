@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Changed
+ - Switched to Rust 2021 edition.
+
 ### Added
  - `RtpPacketBuildError` and `RtpReaderError` now implement `std::error::Error`
 
