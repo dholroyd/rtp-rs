@@ -40,42 +40,37 @@ fn rtp_reader(c: &mut Criterion) {
         0xbcu8, 0x5fu8, 0x8eu8, 0x86u8, 0x56u8, 0x5au8, 0xfcu8, 0x7au8, 0x8bu8, 0xddu8, 0x9au8,
         0x1cu8, 0xf6u8, 0xb4u8, 0x85u8, 0xf4u8, 0xb0u8,
     ];
-    c.bench(
-        "parse",
-        Benchmark::new("parse", move |b| {
-            b.iter(|| {
-                let header = RtpReader::new(&data).unwrap();
-                assert_eq!(2, header.version());
-                assert!(header.padding().is_none());
-                assert!(header.extension().is_none());
-                assert_eq!(0, header.csrc_count());
-                assert!(header.mark());
-                assert_eq!(96, header.payload_type());
-                assert_eq!(10040, u16::from(header.sequence_number()));
-                assert_eq!(1_692_665_255, header.timestamp());
-                assert_eq!(0xa242_af01, header.ssrc());
-                assert_eq!(379, header.payload().len());
-            });
-        })
-        .throughput(Throughput::Bytes(data.len() as u64)),
-    );
+    let mut group = c.benchmark_group("parse");
+    group.throughput(Throughput::Bytes(data.len() as u64));
+    group.bench_function("parse", move |b| {
+        b.iter(|| {
+            let header = RtpReader::new(&data).unwrap();
+            assert_eq!(2, header.version());
+            assert!(header.padding().is_none());
+            assert!(header.extension().is_none());
+            assert_eq!(0, header.csrc_count());
+            assert!(header.mark());
+            assert_eq!(96, header.payload_type());
+            assert_eq!(10040, u16::from(header.sequence_number()));
+            assert_eq!(1_692_665_255, header.timestamp());
+            assert_eq!(0xa242_af01, header.ssrc());
+            assert_eq!(379, header.payload().len());
+        });
+    });
 }
 
 fn rtp_builder(c: &mut Criterion) {
     let payload = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    c.bench(
-        "builder",
-        Benchmark::new("builder", move |b| {
-            b.iter(|| {
-                let _result = RtpPacketBuilder::new()
-                    .payload_type(12)
-                    .payload(&payload)
-                    .marked(true)
-                    .add_csrc(12)
-                    .build().unwrap();
-            });
-        })
-    );
+    c.bench_function("builder", move |b| {
+        b.iter(|| {
+            let _result = RtpPacketBuilder::new()
+                .payload_type(12)
+                .payload(&payload)
+                .marked(true)
+                .add_csrc(12)
+                .build().unwrap();
+        });
+    });
 }
 
 criterion_group!(benches, rtp_reader, rtp_builder);
