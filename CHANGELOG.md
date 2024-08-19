@@ -1,6 +1,7 @@
 # ChangeLog
 
 ## Unreleased
+- Extracted RtpPacketBuilder::build and Errors to 'std' feature, which is on by default. 
 
 ### Changed
  - Switched to Rust 2021 edition.

@@ -314,6 +314,7 @@ impl<'a> RtpPacketBuilder<'a> {
 
     /// Build the RTP packet.
     /// On success, it returns a buffer containing the target packet.
+    #[cfg(feature = "std")]
     pub fn build(&self) -> Result<Vec<u8>, RtpPacketBuildError> {
         self.validate_content()?;
 
@@ -324,7 +325,7 @@ impl<'a> RtpPacketBuilder<'a> {
 
         Ok(buffer)
     }
-
+    
     fn validate_content(&self) -> Result<(), RtpPacketBuildError> {
         if (self.payload_type & (!0x7F)) != 0 {
             return Err(RtpPacketBuildError::PayloadTypeInvalid);
@@ -344,10 +345,12 @@ impl<'a> RtpPacketBuilder<'a> {
     }
 }
 
+// When Rust 1.81 drops with Error in core, this feature gate can be removed.
+#[cfg(feature = "std")]
 impl std::error::Error for RtpPacketBuildError {}
 
-impl std::fmt::Display for RtpPacketBuildError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for RtpPacketBuildError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
             "{}",
@@ -367,16 +370,17 @@ mod test {
 
     #[test]
     fn test_padded() {
-        let payload = vec![1u8];
-        let packet = RtpPacketBuilder::new()
+        let payload = [1u8];
+        let mut buffer = [0u8; 16];
+        RtpPacketBuilder::new()
             .payload_type(1)
             .payload(&payload)
             .padded(Pad::round_to(4))
-            .build()
+            .build_into(&mut buffer)
             .unwrap();
 
-        assert_eq!(packet.len() & 0x03, 0);
-        assert!(crate::reader::RtpReader::new(&packet)
+        assert_eq!(buffer[0] & 0x03, 0);
+        assert!(crate::reader::RtpReader::new(&buffer)
             .unwrap()
             .padding()
             .is_some());
@@ -384,17 +388,18 @@ mod test {
 
     #[test]
     fn test_padding_not_needed() {
-        let payload = vec![1u8; 4];
-        let packet = RtpPacketBuilder::new()
+        let mut buffer = [0u8; 16];
+        let payload = [1u8; 4];
+        let packet_len = RtpPacketBuilder::new()
             .payload_type(1)
             .payload(&payload)
             .padded(Pad::round_to(4))
-            .build()
+            .build_into(&mut buffer)
             .unwrap();
 
         // assert the length is not increased beyond the 12 bytes of header + the payload
-        assert_eq!(packet.len(), 12 + payload.len());
-        assert!(crate::reader::RtpReader::new(&packet)
+        assert_eq!(packet_len, 12 + payload.len());
+        assert!(crate::reader::RtpReader::new(&buffer[..packet_len])
             .unwrap()
             .padding()
             .is_none());
@@ -402,19 +407,20 @@ mod test {
 
     #[test]
     fn test_not_padded() {
-        let payload = vec![1u8];
-        let packet = RtpPacketBuilder::new()
+        let mut buffer = [0u8; 16];
+        let payload = [1u8];
+        let packet_len = RtpPacketBuilder::new()
             .payload_type(1)
             .payload(&payload)
-            .build()
+            .build_into(&mut buffer)
             .unwrap();
 
-        assert_eq!(packet.len() & 0x03, 1);
+        assert_eq!(packet_len & 0x03, 1);
     }
 
     #[test]
     fn test_would_run() {
-        let extension = vec![1u8, 2, 3, 4];
+        let extension = [1u8, 2, 3, 4];
         let builder = RtpPacketBuilder::new()
             .payload_type(12)
             .extension(1, &extension);

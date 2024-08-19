@@ -1,5 +1,5 @@
 use crate::{RtpPacketBuilder, Seq};
-use std::fmt;
+use core::fmt;
 
 /// Wrapper around a byte-slice of RTP data, providing accessor methods for the RTP header fields.
 pub struct RtpReader<'a> {
@@ -281,10 +281,13 @@ impl<'a> fmt::Debug for RtpReader<'a> {
     }
 }
 
+// When Rust 1.81 drops with Error in core, this feature gate can be removed.
+#[cfg(feature = "std")]
 impl std::error::Error for RtpReaderError {}
 
-impl std::fmt::Display for RtpReaderError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for RtpReaderError {
+    #[cfg(feature = "std")]
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
             "{}",
@@ -298,6 +301,20 @@ impl std::fmt::Display for RtpReaderError {
                     "headers truncated: header length: {header_len}; buffer length: {buffer_len}"
                 ),
                 RtpReaderError::PaddingLengthInvalid(p) => format!("padding length invalid: {p}"),
+            }
+        )
+    }
+    
+    #[cfg(not(feature = "std"))]
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                RtpReaderError::BufferTooShort(_) => "buffer too short",
+                RtpReaderError::UnsupportedVersion(_) => "unsupported version",
+                RtpReaderError::HeadersTruncated  { header_len: _, buffer_len: _ } => "headers truncated",
+                RtpReaderError::PaddingLengthInvalid(_) => "padding length invalid",
             }
         )
     }
@@ -368,7 +385,7 @@ mod tests {
         assert_eq!(1_692_665_255, reader.timestamp());
         assert_eq!(0xa242_af01, reader.ssrc());
         assert_eq!(379, reader.payload().len());
-        format!("{:?}", reader);
+        format_args!("{:?}", reader);
     }
 
     #[test]
@@ -395,30 +412,33 @@ mod tests {
     #[test]
     fn builder_juggle() {
         let reader = RtpReader::new(&TEST_RTP_PACKET).unwrap();
-        let buffer = reader.create_builder().build().unwrap();
+        let mut buffer = [0u8; 1024];
+        let buf_len = reader.create_builder().build_into(&mut buffer).unwrap();
 
-        assert_eq!(buffer.as_slice(), &TEST_RTP_PACKET[..]);
+        assert_eq!(&buffer[..buf_len], &TEST_RTP_PACKET[..]);
     }
 
     #[test]
     fn builder_juggle_extension() {
         let reader = RtpReader::new(&TEST_RTP_PACKET_WITH_EXTENSION).unwrap();
-        let buffer = reader.create_builder().build().unwrap();
-        assert_eq!(buffer.as_slice(), &TEST_RTP_PACKET_WITH_EXTENSION[..]);
+        let mut buffer = [0u8; 1024];
+        let buf_len = reader.create_builder().build_into(&mut buffer).unwrap();
+        assert_eq!(&buffer[..buf_len], &TEST_RTP_PACKET_WITH_EXTENSION[..]);
     }
 
     #[test]
     fn builder_juggle_clear_payload() {
-        let new_payload = vec![];
+        let new_payload = [0u8; 0];
         let reader = RtpReader::new(&TEST_RTP_PACKET_WITH_EXTENSION).unwrap();
-        let buffer = reader
+        let mut buffer = [0u8; 1024];
+        let buf_len = reader
             .create_builder()
             .payload(&new_payload)
-            .build()
+            .build_into(&mut buffer)
             .unwrap();
 
         let expected = &TEST_RTP_PACKET_WITH_EXTENSION[0..(3 + 4) * 4];
-        assert_eq!(buffer.as_slice(), expected);
+        assert_eq!(&buffer[..buf_len], expected);
     }
 
     #[test]

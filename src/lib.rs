@@ -19,7 +19,8 @@
 //! ```
 //! use rtp_rs::*;
 //!
-//! let payload = vec![0u8, 2, 5, 4, 6];
+//! let mut buffer = [0u8; 1024];
+//! let payload = [0u8, 2, 5, 4, 6];
 //! let result = RtpPacketBuilder::new()
 //!     .payload_type(111)
 //!     .ssrc(1337)
@@ -28,14 +29,38 @@
 //!     .padded(Pad::round_to(4))
 //!     .marked(true)
 //!     .payload(&payload)
-//!     .build();
-//! if let Ok(packet) = result {
-//!     println!("Packet: {:?}", packet);
+//!     .build_into(&mut buffer);
+//!
+//! if let Ok(len) = result {
+//!     println!("Packet: {:?}", &buffer[..len]);
 //! }
 //! ```
+#![cfg_attr(feature = "std", doc = r#"
+
+Building a packet with std enabled lets you skip the buffer;
+    
+```
+use rtp_rs::*;
+
+let payload = vec![0u8, 2, 5, 4, 6];
+let result = RtpPacketBuilder::new()
+    .payload_type(111)
+    .ssrc(1337)
+    .sequence(Seq::from(1234))
+    .timestamp(666657)
+    .padded(Pad::round_to(4))
+    .marked(true)
+    .payload(&payload)
+    .build();
+if let Ok(packet) = result {
+    println!("Packet: {:?}", packet);
+}
+```"#)]
 
 #![forbid(unsafe_code)]
 #![deny(rust_2018_idioms, future_incompatible, missing_docs)]
+
+#![cfg_attr(not(feature = "std"), no_std)]
 
 /// 16 bit RTP sequence number value, as obtained from the `sequence_number()` method of RtpReader.
 ///
@@ -104,32 +129,32 @@ impl From<u16> for Seq {
 /// `1` (rather than `-65535`).
 ///
 /// This is for symmetry with addition, where for example `Seq(0xffff) + 1` gives `Seq(0x0000)`
-impl std::ops::Sub for Seq {
+impl core::ops::Sub for Seq {
     type Output = i32;
 
     fn sub(self, rhs: Seq) -> Self::Output {
         let delta = i32::from(self.0) - i32::from(rhs.0);
-        if delta < std::i16::MIN as i32 {
-            std::u16::MAX as i32 + 1 + delta
-        } else if delta > std::i16::MAX as i32 {
-            delta - std::u16::MAX as i32 - 1
+        if delta < core::i16::MIN as i32 {
+            core::u16::MAX as i32 + 1 + delta
+        } else if delta > core::i16::MAX as i32 {
+            delta - core::u16::MAX as i32 - 1
         } else {
             delta
         }
     }
 }
 impl PartialOrd for Seq {
-    fn partial_cmp(&self, other: &Seq) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Seq) -> Option<core::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 impl Ord for Seq {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
         (*self - *other).cmp(&0)
     }
 }
 
-impl std::ops::Add<u16> for Seq {
+impl core::ops::Add<u16> for Seq {
     type Output = Seq;
 
     fn add(self, rhs: u16) -> Self::Output {
@@ -142,7 +167,7 @@ pub trait IntoSeqIterator {
     /// Produce an `Iterator` over sequence number values
     fn seq_iter(self) -> SeqIter;
 }
-impl IntoSeqIterator for std::ops::Range<Seq> {
+impl IntoSeqIterator for core::ops::Range<Seq> {
     fn seq_iter(self) -> SeqIter {
         SeqIter(self.start, self.end)
     }
