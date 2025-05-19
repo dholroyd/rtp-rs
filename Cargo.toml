@@ -15,7 +15,7 @@ name = "rtp_rs"
 path = "src/lib.rs"
 
 [dev-dependencies]
-criterion = "0.5"
+criterion = "0.6"
 
 [[bench]]
 name = "bench"
